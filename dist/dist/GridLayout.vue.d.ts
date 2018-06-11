@@ -1,0 +1,41 @@
+import { Vue } from "vue-property-decorator";
+import { LayoutItem, LayoutItemRequired } from "./utils";
+export default class GridLayoutComponent extends Vue {
+    eventBus: Vue;
+    autoSize: boolean;
+    colNum: number;
+    rowHeight: number;
+    maxRows: number;
+    margin: [number, number];
+    isDraggable: boolean;
+    isResizable: boolean;
+    isMirrored: boolean;
+    useCssTransforms: boolean;
+    verticalCompact: boolean;
+    layout: LayoutItem[];
+    width: number;
+    mergedStyle: object;
+    lastLayoutLength: number;
+    isDragging: boolean;
+    placeholder: LayoutItemRequired;
+    $refs: {
+        item: HTMLElement;
+    };
+    resizeEventHandler(eventType: string, i: string, x: number, y: number, h: number, w: number): void;
+    dragEventHandler(eventType: string, i: string, x: number, y: number, h: number, w: number): void;
+    created(): void;
+    beforeDestroy(): void;
+    mounted(): void;
+    onWidthChange(): void;
+    onLayoutChange(): void;
+    onColNumChange(val: number): void;
+    onRowHeightChange(): void;
+    onIsDraggableChange(): void;
+    onIsResizableChange(): void;
+    layoutUpdate(): void;
+    updateHeight(): void;
+    onWindowResize(): void;
+    containerHeight(): string;
+    dragEvent(eventName: string, id: string, x: number, y: number, h: number, w: number): void;
+    resizeEvent(eventName: string, id: string, x: number, y: number, h: number, w: number): void;
+}

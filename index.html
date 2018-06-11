@@ -5,9 +5,32 @@
     <title>Vue Grid Layout</title>
     <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no">
     <link href="examples/app.css" rel="stylesheet"/>
+    <script src="/examples/vue.js"></script>
+    <script src="/dist/build.js"></script>
 </head>
 <body>
-<div id="app"></div>
-<script src="/dist/build.js"></script>
+<div id="app">
+    <h1>Testing</h1>
+    <grid-layout :layout="layout"
+        :col-num="12"
+        :row-height="30"
+        :margin="[10, 10]"
+        :is-draggable="true"
+        :is-resizable="resizable"
+        :vertical-compact="true"
+        :use-css-transforms="true">
+        <grid-item v-for="item in layout"
+            :x="item.x"
+            :y="item.y"
+            :w="item.w"
+            :h="item.h"
+            :i="item.i"
+            :key="item.i"
+            :is-draggable="true">
+            <span class="text">{{item.i}}</span>
+        </grid-item>
+    </grid-layout>
+</div>
+<script src="/examples/01-basic.js"></script>
 </body>
 </html>

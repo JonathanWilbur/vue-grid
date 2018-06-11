@@ -1,14 +1,13 @@
-var config = require('./webpack.config.js')
+let config = require('./webpack.config.js')
 
 config.entry = {
-  'vue-grid-layout': './src/index.js',
+    'vue-grid-layout': './source/index.ts',
 }
 
 config.output = {
-  filename: './dist/[name].js',
-  library: 'VueGridLayout',
-  libraryTarget: 'umd'
+    filename: './dist/[name].ts',
+    library: 'VueGridLayout',
+    libraryTarget: 'umd'
 }
 
-
-module.exports = config
+module.exports = config;

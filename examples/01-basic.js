@@ -1,4 +1,4 @@
-var testLayout = [
+let testLayout = [
     {"x":0,"y":0,"w":2,"h":2,"i":"0"},
     {"x":2,"y":0,"w":2,"h":4,"i":"1"},
     {"x":4,"y":0,"w":2,"h":5,"i":"2"},
@@ -21,71 +21,27 @@ var testLayout = [
     {"x":2,"y":6,"w":2,"h":2,"i":"19"}
 ];
 
-//var Vue = require('vue');
+// Vue.config.debug = true;
+// Vue.config.devtools = true;
 
-Vue.config.debug = true;
-Vue.config.devtools = true;
+// let GridLayout = vuegrid.GridLayoutComponent;
+// let GridItem = vuegrid.GridItemComponent;
 
-var GridLayout = VueGridLayout.GridLayout;
-var GridItem = VueGridLayout.GridItem;
+// Vue.component("grid-layout", vuegrid.GridLayout);
+// Vue.component("grid-item", vuegrid.GridItem);
+
+// console.log(JSON.stringify(window.vuegrid));
 
 new Vue({
     el: '#app',
     components: {
-		"GridLayout": GridLayout,
-		"GridItem": GridItem
+        "grid-layout": window.vuegrid.VueGridLayout.GridLayout,
+        "grid-item": window.vuegrid.VueGridLayout.GridItem
     },
     data: {
         layout: testLayout,
         draggable: true,
         resizable: true,
         index: 0
-    },
-/*
-    mounted: function () {
-        this.index = this.layout.length;
-    },
-    methods: {
-        increaseWidth: function(item) {
-            var width = document.getElementById("content").offsetWidth;
-            width += 20;
-            document.getElementById("content").style.width = width+"px";
-        },
-        decreaseWidth: function(item) {
-
-            var width = document.getElementById("content").offsetWidth;
-            width -= 20;
-            document.getElementById("content").style.width = width+"px";
-        },
-        removeItem: function(item) {
-            //console.log("### REMOVE " + item.i);
-            this.layout.splice(this.layout.indexOf(item), 1);
-        },
-        addItem: function() {
-            var self = this;
-            //console.log("### LENGTH: " + this.layout.length);
-            var item = {"x":0,"y":0,"w":2,"h":2,"i":this.index+"", whatever: "bbb"};
-            this.index++;
-            this.layout.push(item);
-        }
     }
-*/
 });
-
-/*
-function generateLayout() {
-    return _.map(_.range(0, 25), function (item, i) {
-        var y = Math.ceil(Math.random() * 4) + 1;
-        return {
-            x: _.random(0, 5) * 2 % 12,
-            y: Math.floor(i / 6) * y,
-            w: 2,
-            h: y,
-            i: i.toString(),
-            static: Math.random() < 0.05
-        };
-    });
-}*/
-
-
-

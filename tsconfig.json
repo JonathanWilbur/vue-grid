@@ -1,0 +1,31 @@
+{
+    "compilerOptions": {
+        "outDir": "./dist/",
+        "declarationDir": "dist",
+        "sourceMap": true,
+        "strict": true,
+        "noImplicitReturns": true,
+        "module": "es2015",
+        "moduleResolution": "node",
+        "target": "es5",
+        "experimentalDecorators": true,
+        "emitDecoratorMetadata": true,
+        "lib": ["es2015", "es2016", "es2017", "dom"],
+        "declaration": true,
+        "allowSyntheticDefaultImports": true,
+        "allowJs": false
+    },
+    "typeRoots": [
+        "node_modules/@types"
+    ],
+    "files": [
+        "./source/vue-shims.d.ts",
+        "./source/draggableUtils.ts",
+        "./source/GridItem.vue",
+        "./source/GridLayout.vue",
+        "./source/index.ts",
+        "./source/ResponsiveGridLayout.vue",
+        "./source/responsiveUtils.ts",
+        "./source/utils.ts"
+    ]
+}
