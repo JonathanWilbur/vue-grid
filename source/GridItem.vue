@@ -1,60 +1,81 @@
 <template>
     <div ref="item"
         class="vue-grid-item"
-        :class="{ 'vue-resizable' : resizable, 'resizing' : isResizing, 'vue-draggable-dragging' : isDragging, 'cssTransforms' : useCssTransforms, 'render-rtl' : rtl, 'disable-userselect': isDragging }"
+        :class="{ 'vue-resizable' : isResizable, 'resizing' : isResizing, 'vue-draggable-dragging' : isDragging, 'cssTransforms' : useCssTransforms, 'render-rtl' : rightToLeft, 'disable-userselect': isDragging }"
         :style="style">
         <slot></slot>
-        <span v-if="resizable" ref="handle" :class="resizableHandleClass"></span>
+        <span v-if="isResizable" ref="handle" class="vue-resizable-handle"></span>
     </div>
 </template>
 
 <script lang="ts">
-import { setTopLeft, setTopRight, setTransformRtl, setTransform, Position, Size } from './utils';
+import { setTopLeft, setTopRight, setTransformRtl, setTransform } from './utils';
 import { getControlPosition, createCoreData, CoreData } from './draggableUtils';
 import { Vue, Component, Prop, Inject, Watch } from "vue-property-decorator";
 import { Interactable, InteractEvent } from "interactjs"; // FIXME: Add DraggableOptions when v1.4.0 comes out.
 import * as interact from "interactjs/index";
+
+// TODO: Make this use direct DOM manipulation rather than manipulating the style property. It is MUCH faster.
+/* NOTE:
+    Do not delete anything having anything to do with containerWidth or the
+    parent $el.clientWidth. I may need this later when I refactor to make
+    the GridLayout.vue push this state down via props.
+*/
+// NOTE: I notice that resizing vertically does not work. Idk if that is expected behavior.
+
+export
+type Size = {
+    width : number,
+    height : number
+};
+
+export
+type Position = {
+    left? : number,
+    right? : number,
+    top : number,
+    width? : number,
+    height? : number
+};
 
 @Component({})
 export default class GridItemComponent extends Vue {
 
     @Inject() eventBus! : Vue; // REVIEW
 
-    @Prop({ default: false }) public isDraggable! : boolean; // not required
-    @Prop({ default: false }) public isResizable! : boolean; // not required
-    @Prop({ default: 1 }) public minH! : number; // not required, default 1
-    @Prop({ default: 1 }) public minW! : number; // not required, default 1
-    @Prop({ default: Infinity }) public maxH! : number; // not required, default Infinity
-    @Prop({ default: Infinity }) public maxW! : number; // not required, default Infinity
-    @Prop() public x! : number; // required
-    @Prop() public y! : number; // required
-    @Prop() public w! : number; // required
-    @Prop() public h! : number; // required
-    @Prop() public i! : string; // required
+    @Prop() public x! : number;
+    @Prop() public y! : number;
+    @Prop() public w! : number;
+    @Prop() public h! : number;
+    @Prop() public i! : string;
+    @Prop({ default: 1 }) public minH! : number;
+    @Prop({ default: 1 }) public minW! : number;
+    @Prop({ default: Infinity }) public maxH! : number;
+    @Prop({ default: Infinity }) public maxW! : number;
+    @Prop({ default: false }) public isDraggable! : boolean;
+    @Prop({ default: false }) public isResizable! : boolean;
+    @Prop({ default: false }) public rightToLeft! : boolean;
+    @Prop({ default: 30 }) public rowHeight! : number;
+    @Prop({ default: 12 }) public cols! : number;
 
     // REVIEW: These could be better data types.
-    @Prop({ default: "a, button" }) public dragIgnoreFrom! : string; // not required, default 'a, button'
-    @Prop({ default: "" }) public dragAllowFrom! : string; // not required, default ""
-    @Prop({ default: "a, button" }) public resizeIgnoreFrom! : string; // not required, default 'a, button'
+    @Prop({ default: "a, button" }) public dragIgnoreFrom! : string;
+    @Prop({ default: "" }) public dragAllowFrom! : string;
+    @Prop({ default: "a, button" }) public resizeIgnoreFrom! : string;
 
-    public cols : number = 1;
-    public containerWidth : number = 100;
-    public rowHeight : number = 30;
+    // public containerWidth : number = 100;
     public margin : [ number, number ] = [10, 10];
     public maxRows : number = Infinity;
-    public draggable : boolean = false;
-    public resizable : boolean = false;
-    public useCssTransforms : boolean = true;
+    public useCssTransforms : boolean = true; // FIXME: Make it a prop
     public isDragging : boolean = false;
-    public dragging? : Position = undefined;
+    public dragging? : Position = undefined; // FIXME: Deceptive name
     public isResizing : boolean = false;
-    public resizing? : Size = undefined;
+    public resizing? : Size = undefined; // FIXME: Deceptive name
     public lastX : number = NaN;
     public lastY : number = NaN;
     public lastW : number = NaN;
     public lastH : number = NaN;
-    public style : object = {};
-    public rtl : boolean = false;
+    public style : object = {}; // TODO: Make this computed
     public dragEventSet : boolean = false;
     public resizeEventSet : boolean = false;
     public previousW : number = 0;
@@ -68,104 +89,19 @@ export default class GridItemComponent extends Vue {
 
     public interactObj? : Interactable;
 
-    public updateWidthHandler (width : number) : void {
-        this.updateWidth(width);
-    }
-
-    /**
-     * REVIEW: Something is screwy here: In the original library, the layout
-     * argument is passed into compact, but compact() does not use it...
-     * At least, it looks that way.
-     */
-    public compactHandler () : void {
-        this.compact();
-    }
-
-    public setDraggableHandler (isDraggable : boolean) : void {
-        this.draggable = isDraggable;
-    }
-
-    public setResizableHandler (isResizable : boolean) : void {
-        this.resizable = isResizable;
-    }
-
-    public setRowHeightHandler (rowHeight : number) : void {
-        this.rowHeight = rowHeight;
-    }
-
-    // REVIEW: It looks like "dir" is unused...
-    public directionchangeHandler () : void {
-        let direction : string = (document.dir !== undefined) ?
-            document.dir :
-            (document.getElementsByTagName("html")[0].getAttribute("dir") || "");
-        this.rtl = (direction === "rtl");
-        this.compact();
-    }
-
-    // TODO: Make this take a number instead.
-    public setColNum (numberString : string) : void {
-        this.cols = parseInt(numberString);
-    }
-
-    public created () : void {
-        let self = this;
-        this.eventBus.$on('updateWidth', self.updateWidthHandler);
-        this.eventBus.$on('compact', self.compactHandler);
-        this.eventBus.$on('setDraggable', self.setDraggableHandler);
-        this.eventBus.$on('setResizable', self.setResizableHandler);
-        this.eventBus.$on('setRowHeight', self.setRowHeightHandler);
-        this.eventBus.$on('directionchange', self.directionchangeHandler);
-        this.eventBus.$on('setColNum', self.setColNum)
-
-        // REVIEW: Why don't we just call directionchangeHandler, created above?
-        let direction = (document.dir !== undefined) ?
-            document.dir :
-            document.getElementsByTagName("html")[0].getAttribute("dir");
-        this.rtl = (direction === "rtl");
-    }
-
-    public beforeDestroy () : void {
-        let self = this;
-        //Remove listeners
-        this.eventBus.$off('updateWidth', self.updateWidthHandler);
-        this.eventBus.$off('compact', self.compactHandler);
-        this.eventBus.$off('setDraggable', self.setDraggableHandler);
-        this.eventBus.$off('setResizable', self.setResizableHandler);
-        this.eventBus.$off('setRowHeight', self.setRowHeightHandler);
-        this.eventBus.$off('directionchange', self.directionchangeHandler);
-        this.eventBus.$off('setColNum', self.setColNum);
-    }
-
     /* REVIEW:
      * This really reeks of very bad code. All of these properties should be
      * set by the parent via props.
      */
     public mounted () : void {
-        // this.cols = this.$parent.$data.colNum; // Unfortunately, it has to be this way, for right now.
-        this.cols = this.$parent.$props.colNum; // REVIEW: Can these be data instead?
-        this.rowHeight = this.$parent.$props.rowHeight; // REVIEW: Can these be data instead?
-        this.containerWidth = this.$parent.$el.clientWidth; // REVIEW: I changed this from 'width'
+        this.eventBus.$on('compact', this.createStyle);
         this.margin = this.$parent.$props.margin;
         this.maxRows = this.$parent.$props.maxRows;
-        // FIXME: I changed code here. These will be required as props now.
-        this.draggable = this.isDraggable; // REVIEW: Why?
-        this.resizable = this.isResizable; // REVIEW: Why?
         this.useCssTransforms = this.$parent.$props.useCssTransforms;
         this.createStyle();
-    }
+        this.interactObj = interact(this.$refs.item);
 
-    // REVIEW: Why this recursion?
-    @Watch('isDraggable')
-    public onIsDraggableChanged () : void {
-        this.draggable = this.isDraggable;
-    }
-
-    @Watch('draggable')
-    public onDraggableChanged () : void {
-        if (this.interactObj === null || this.interactObj === undefined)
-            this.interactObj = interact(this.$refs.item);
-
-        if (this.draggable) {
+        if (this.isDraggable) {
             // FIXME: Uncomment when InteractJS 1.4.0 comes out.
             // let opts = {
             //     ignoreFrom: this.dragIgnoreFrom,
@@ -174,39 +110,21 @@ export default class GridItemComponent extends Vue {
             let opts = {};
             this.interactObj.draggable(opts);
             if (!this.dragEventSet) {
-                this.dragEventSet = true;
+                // TODO: Break this into separate callbacks
                 this.interactObj.on(['dragstart', 'dragmove', 'dragend'], (event : InteractEvent) => {
                     this.handleDrag(event);
                 });
+                this.dragEventSet = true; // TODO: Get rid of this superfluous state.
             }
-            // let list = new Liste
-        } else {
-            // FIXME: Uncomment when InteractJS 1.4.0 comes out.
-            // this.interactObj.draggable({
-            //     enabled: false
-            // });
         }
-    }
 
-    // REVIEW: Why this recursion?
-    @Watch('isResizable')
-    public onIsResizableChanged () : void {
-        this.resizable = this.isResizable;
-    }
-
-    @Watch('resizable')
-    public onResizableChanged () : void {
-        let self = this;
-        if (this.interactObj === null || this.interactObj === undefined) {
-            this.interactObj = interact(this.$refs.item);
-        }
-        if (this.resizable) {
+        if (this.isResizable) {
             let opts = {
                 preserveAspectRatio: false,
                 edges: {
                     left: false,
-                    right: "." + this.resizableHandleClass,
-                    bottom: "." + this.resizableHandleClass,
+                    right: ".vue-resizable-handle",
+                    bottom: ".vue-resizable-handle",
                     top: false
                 },
                 ignoreFrom: this.resizeIgnoreFrom
@@ -214,39 +132,14 @@ export default class GridItemComponent extends Vue {
 
             this.interactObj.resizable(opts);
             if (!this.resizeEventSet) {
-                this.resizeEventSet = true;
+                // TODO: Break this into separate callbacks.
                 this.interactObj
                     .on(['resizestart', 'resizemove', 'resizeend'], (event : InteractEvent) => {
-                        self.handleResize(event);
+                        this.handleResize(event);
                     });
+                this.resizeEventSet = true; // TODO: Get rid of this superfluous state.
             }
-        } else {
-            // FIXME: Uncomment when InteractJS 1.4.0 comes out.
-            // this.interactObj.resizable({
-            //     enabled: false
-            // });
         }
-    }
-
-    @Watch('rowHeight')
-    public onRowHeightChanged () : void {
-        this.createStyle();
-    }
-
-    @Watch('cols')
-    public onColsChanged () : void {
-        this.createStyle();
-    }
-
-    @Watch('containerWidth')
-    public onContainerWidthChanged () : void {
-        this.createStyle();
-    }
-
-    @Watch('x')
-    public onXChanged (newVal : number) : void {
-        this.innerX = newVal;
-        this.createStyle();
     }
 
     @Watch('y')
@@ -255,38 +148,10 @@ export default class GridItemComponent extends Vue {
         this.createStyle();
     }
 
-    @Watch('h')
-    public onHChanged (newVal : number) : void {
-        this.innerH = newVal;
-        this.createStyle();
-    }
-
-    @Watch('w')
-    public onWChanged (newVal : number) : void {
-        this.innerW = newVal;
-        this.createStyle();
-    }
-
-    @Watch('rtl')
-    public onRTLChanged () : void {
-        this.createStyle();
-    }
-
-    // public renderRtl () : boolean {
-    //     return ((this.$parent.$props.isMirrored) ? !this.rtl : this.rtl);
-    // }
-
-    public resizableHandleClass () : string {
-        if (this.rtl) {
-            return 'vue-resizable-handle vue-rtl-resizable-handle';
-        } else {
-            return 'vue-resizable-handle';
-        }
-    }
-
+    // TODO: Break the first part of this function into separate functions.
     public createStyle () : void {
 
-        if (this.x + this.w > this.cols) {
+        if ((this.x + this.w) > this.cols) {
             this.innerX = 0;
             this.innerW = ((this.w > this.cols) ? this.cols : this.w);
         } else {
@@ -299,7 +164,7 @@ export default class GridItemComponent extends Vue {
         // REVIEW: I added '&& this.dragging' here.
         if (this.isDragging && this.dragging) {
             pos.top = this.dragging.top;
-            if (this.rtl) {
+            if (this.rightToLeft) {
                 pos.right = this.dragging.left;
             } else {
                 pos.left = this.dragging.left;
@@ -312,24 +177,19 @@ export default class GridItemComponent extends Vue {
             pos.height = this.resizing.height;
         }
 
-        // REVIEW: I added all of the (pos.whatever || 0) here.
-        let style;
         if (this.useCssTransforms) {
-            if (this.rtl) {
-                style = setTransformRtl(pos.top, (pos.right || 0), (pos.width || 0), (pos.height || 0));
+            if (this.rightToLeft) {
+                this.style = setTransformRtl(pos.top, (pos.right || 0), (pos.width || 0), (pos.height || 0));
             } else {
-                style = setTransform(pos.top, (pos.left || 0), (pos.width || 0), (pos.height || 0));
+                this.style = setTransform(pos.top, (pos.left || 0), (pos.width || 0), (pos.height || 0));
             }
-
         } else {
-            if (this.rtl) {
-                style = setTopRight(pos.top, (pos.right || 0), (pos.width || 0), (pos.height || 0));
+            if (this.rightToLeft) {
+                this.style = setTopRight(pos.top, (pos.right || 0), (pos.width || 0), (pos.height || 0));
             } else {
-                style = setTopLeft(pos.top, (pos.left || 0), (pos.width || 0), (pos.height || 0));
+                this.style = setTopLeft(pos.top, (pos.left || 0), (pos.width || 0), (pos.height || 0));
             }
         }
-
-        this.style = style;
     }
 
     public handleResize (event : InteractEvent) : void {
@@ -349,7 +209,6 @@ export default class GridItemComponent extends Vue {
                 this.previousW = this.innerW;
                 this.previousH = this.innerH;
                 pos = this.calcPosition(this.innerX, this.innerY, this.innerW, this.innerH);
-                // REVIEW: I added the '|| 0'
                 newSize.width = (pos.width || 0);
                 newSize.height = (pos.height || 0);
                 this.resizing = newSize;
@@ -358,18 +217,16 @@ export default class GridItemComponent extends Vue {
             case "resizemove":
                 if (!this.resizing) return;
                 const coreEvent : CoreData = createCoreData(this.lastW, this.lastH, x, y);
-                if (this.rtl) {
-                    newSize.width = this.resizing.width - coreEvent.deltaX;
+                if (this.rightToLeft) {
+                    newSize.width = (this.resizing.width - coreEvent.deltaX);
                 } else {
-                    newSize.width = this.resizing.width + coreEvent.deltaX;
+                    newSize.width = (this.resizing.width + coreEvent.deltaX);
                 }
                 newSize.height = this.resizing.height + coreEvent.deltaY;
-
                 this.resizing = newSize;
                 break;
             case "resizeend":
                 pos = this.calcPosition(this.innerX, this.innerY, this.innerW, this.innerH);
-                // REVIEW: I added the '|| 0'
                 newSize.width = pos.width || 0;
                 newSize.height = pos.height || 0;
                 this.resizing = undefined;
@@ -413,15 +270,11 @@ export default class GridItemComponent extends Vue {
             case "dragstart":
                 this.previousX = this.innerX;
                 this.previousY = this.innerY;
-
                 let parentRect = event.target.offsetParent.getBoundingClientRect();
                 let clientRect = event.target.getBoundingClientRect();
-                if (this.rtl) {
-                    newPosition.left = (clientRect.right - parentRect.right) * -1;
-                } else {
-                    newPosition.left = clientRect.left - parentRect.left;
-                }
-                newPosition.top = clientRect.top - parentRect.top;
+                newPosition.left = (clientRect.left - parentRect.left);
+                if (this.rightToLeft) newPosition.left *= -1;
+                newPosition.top = (clientRect.top - parentRect.top);
                 this.dragging = newPosition;
                 this.isDragging = true;
                 break;
@@ -429,11 +282,8 @@ export default class GridItemComponent extends Vue {
                 if (!this.isDragging) return;
                 parentRect = event.target.offsetParent.getBoundingClientRect();
                 clientRect = event.target.getBoundingClientRect();
-                if (this.rtl) {
-                    newPosition.left = (clientRect.right - parentRect.right) * -1;
-                } else {
-                    newPosition.left = clientRect.left - parentRect.left;
-                }
+                newPosition.left = (clientRect.left - parentRect.left);
+                if (this.rightToLeft) newPosition.left *= -1;
                 newPosition.top = clientRect.top - parentRect.top;
                 this.dragging = undefined;
                 this.isDragging = false;
@@ -442,25 +292,18 @@ export default class GridItemComponent extends Vue {
             case "dragmove":
                 if (!this.dragging) return;
                 const coreEvent : CoreData = createCoreData(this.lastX, this.lastY, x, y);
-                // REVIEW: I added the '|| 0'.
-                if (this.rtl) {
-                    newPosition.left = (this.dragging.left || 0) - coreEvent.deltaX;
+                if (this.rightToLeft) {
+                    newPosition.left = ((this.dragging.left || 0) - coreEvent.deltaX);
                 } else {
-                    newPosition.left = (this.dragging.left || 0) + coreEvent.deltaX;
+                    newPosition.left = ((this.dragging.left || 0) + coreEvent.deltaX);
                 }
                 newPosition.top = this.dragging.top + coreEvent.deltaY;
                 this.dragging = newPosition;
                 break;
         }
 
-        // Get new XY
-        let pos : { x : number, y : number };
-        if (this.rtl) {
-            pos = this.calcXY(newPosition.top, newPosition.left);
-        } else {
-            pos = this.calcXY(newPosition.top, newPosition.left);
-        }
-
+        // REVIEW: I think there is a problem here.
+        let pos : { x : number, y : number } = this.calcXY(newPosition.top, newPosition.left);
         this.lastX = x;
         this.lastY = y;
 
@@ -474,29 +317,27 @@ export default class GridItemComponent extends Vue {
     }
 
     // FIXME: Improve the specificity of the return type.
+    // TODO: Make this a property
     public calcPosition (x : number, y : number, w : number, h : number) : Position {
-        const colWidth = this.calcColWidth();
-        let out : Position;
-        if (this.rtl) {
-            out = {
+        const colWidth = this.calcColWidth(); // TODO: Convert this to a property
+        // TODO: Use one return statement, if possible
+        if (this.rightToLeft) {
+            return {
                 right: Math.round(colWidth * x + (x + 1) * this.margin[0]),
                 top: Math.round(this.rowHeight * y + (y + 1) * this.margin[1]),
                 width: w === Infinity ? w : Math.round(colWidth * w + Math.max(0, w - 1) * this.margin[0]),
                 height: h === Infinity ? h : Math.round(this.rowHeight * h + Math.max(0, h - 1) * this.margin[1])
             };
         } else {
-            out = {
+            return {
                 left: Math.round(colWidth * x + (x + 1) * this.margin[0]),
                 top: Math.round(this.rowHeight * y + (y + 1) * this.margin[1]),
                 width: w === Infinity ? w : Math.round(colWidth * w + Math.max(0, w - 1) * this.margin[0]),
                 height: h === Infinity ? h : Math.round(this.rowHeight * h + Math.max(0, h - 1) * this.margin[1])
             };
         }
-
-        return out;
     }
 
-    // FIXME: Improve the specificity of the return type.
     /**
     * Translate x and y coordinates from pixels to grid units.
     * @param  {number} top  Top position (relative to parent) in pixels.
@@ -513,11 +354,9 @@ export default class GridItemComponent extends Vue {
     }
 
     public calcColWidth () : number {
-        let colWidth = (this.containerWidth - (this.margin[0] * (this.cols + 1))) / this.cols;
-        return colWidth;
+        return ((this.$parent.$el.clientWidth - (this.margin[0] * (this.cols + 1))) / this.cols);
     }
 
-    // FIXME: Improve the specificity of the return type.
     /**
     * Given a height and width in pixel values, calculate grid units.
     * @param  {Number} height Height in pixels.
@@ -531,13 +370,6 @@ export default class GridItemComponent extends Vue {
         w = Math.max(Math.min(w, this.cols - this.innerX), 0);
         h = Math.max(Math.min(h, this.maxRows - this.innerY), 0);
         return {w, h};
-    }
-
-    public updateWidth (width : number, colNum? : number) : void {
-        this.containerWidth = width;
-        if (colNum !== undefined && colNum !== null) {
-            this.cols = colNum;
-        }
     }
 
     // REVIEW: What is the point of this?
@@ -587,7 +419,7 @@ export default class GridItemComponent extends Vue {
         user-select: none;
     }
 
-    .vue-grid-item > .vue-resizable-handle {
+    .vue-grid-item > .vue-resizable-handle.rtl {
         position: absolute;
         width: 20px;
         height: 20px;
@@ -602,7 +434,7 @@ export default class GridItemComponent extends Vue {
         cursor: se-resize;
     }
 
-    .vue-grid-item > .vue-rtl-resizable-handle {
+    .vue-grid-item > .vue-resizable-handle.rtl {
         bottom: 0;
         left: 0;
         background: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAuMDAwMDAwMDAwMDAwMDAyIiBoZWlnaHQ9IjEwLjAwMDAwMDAwMDAwMDAwMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KIDwhLS0gQ3JlYXRlZCB3aXRoIE1ldGhvZCBEcmF3IC0gaHR0cDovL2dpdGh1Yi5jb20vZHVvcGl4ZWwvTWV0aG9kLURyYXcvIC0tPgogPGc+CiAgPHRpdGxlPmJhY2tncm91bmQ8L3RpdGxlPgogIDxyZWN0IGZpbGw9Im5vbmUiIGlkPSJjYW52YXNfYmFja2dyb3VuZCIgaGVpZ2h0PSIxMiIgd2lkdGg9IjEyIiB5PSItMSIgeD0iLTEiLz4KICA8ZyBkaXNwbGF5PSJub25lIiBvdmVyZmxvdz0idmlzaWJsZSIgeT0iMCIgeD0iMCIgaGVpZ2h0PSIxMDAlIiB3aWR0aD0iMTAwJSIgaWQ9ImNhbnZhc0dyaWQiPgogICA8cmVjdCBmaWxsPSJ1cmwoI2dyaWRwYXR0ZXJuKSIgc3Ryb2tlLXdpZHRoPSIwIiB5PSIwIiB4PSIwIiBoZWlnaHQ9IjEwMCUiIHdpZHRoPSIxMDAlIi8+CiAgPC9nPgogPC9nPgogPGc+CiAgPHRpdGxlPkxheWVyIDE8L3RpdGxlPgogIDxsaW5lIGNhbnZhcz0iI2ZmZmZmZiIgY2FudmFzLW9wYWNpdHk9IjEiIHN0cm9rZS1saW5lY2FwPSJ1bmRlZmluZWQiIHN0cm9rZS1saW5lam9pbj0idW5kZWZpbmVkIiBpZD0ic3ZnXzEiIHkyPSItNzAuMTc4NDA3IiB4Mj0iMTI0LjQ2NDE3NSIgeTE9Ii0zOC4zOTI3MzciIHgxPSIxNDQuODIxMjg5IiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlPSIjMDAwIiBmaWxsPSJub25lIi8+CiAgPGxpbmUgc3Ryb2tlPSIjNjY2NjY2IiBzdHJva2UtbGluZWNhcD0idW5kZWZpbmVkIiBzdHJva2UtbGluZWpvaW49InVuZGVmaW5lZCIgaWQ9InN2Z181IiB5Mj0iOS4xMDY5NTciIHgyPSIwLjk0NzI0NyIgeTE9Ii0wLjAxODEyOCIgeDE9IjAuOTQ3MjQ3IiBzdHJva2Utd2lkdGg9IjIiIGZpbGw9Im5vbmUiLz4KICA8bGluZSBzdHJva2UtbGluZWNhcD0idW5kZWZpbmVkIiBzdHJva2UtbGluZWpvaW49InVuZGVmaW5lZCIgaWQ9InN2Z183IiB5Mj0iOSIgeDI9IjEwLjA3MzUyOSIgeTE9IjkiIHgxPSItMC42NTU2NCIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2U9IiM2NjY2NjYiIGZpbGw9Im5vbmUiLz4KIDwvZz4KPC9zdmc+);

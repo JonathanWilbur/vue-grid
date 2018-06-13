@@ -1,29 +1,37 @@
-import { Position, Size } from './utils';
 import { Vue } from "vue-property-decorator";
 import { Interactable, InteractEvent } from "interactjs";
+export declare type Size = {
+    width: number;
+    height: number;
+};
+export declare type Position = {
+    left?: number;
+    right?: number;
+    top: number;
+    width?: number;
+    height?: number;
+};
 export default class GridItemComponent extends Vue {
     eventBus: Vue;
-    isDraggable: boolean;
-    isResizable: boolean;
-    minH: number;
-    minW: number;
-    maxH: number;
-    maxW: number;
     x: number;
     y: number;
     w: number;
     h: number;
     i: string;
+    minH: number;
+    minW: number;
+    maxH: number;
+    maxW: number;
+    isDraggable: boolean;
+    isResizable: boolean;
+    rightToLeft: boolean;
+    rowHeight: number;
+    cols: number;
     dragIgnoreFrom: string;
     dragAllowFrom: string;
     resizeIgnoreFrom: string;
-    cols: number;
-    containerWidth: number;
-    rowHeight: number;
     margin: [number, number];
     maxRows: number;
-    draggable: boolean;
-    resizable: boolean;
     useCssTransforms: boolean;
     isDragging: boolean;
     dragging?: Position;
@@ -34,7 +42,6 @@ export default class GridItemComponent extends Vue {
     lastW: number;
     lastH: number;
     style: object;
-    rtl: boolean;
     dragEventSet: boolean;
     resizeEventSet: boolean;
     previousW: number;
@@ -46,34 +53,8 @@ export default class GridItemComponent extends Vue {
     innerW: number;
     innerH: number;
     interactObj?: Interactable;
-    updateWidthHandler(width: number): void;
-    /**
-     * REVIEW: Something is screwy here: In the original library, the layout
-     * argument is passed into compact, but compact() does not use it...
-     * At least, it looks that way.
-     */
-    compactHandler(): void;
-    setDraggableHandler(isDraggable: boolean): void;
-    setResizableHandler(isResizable: boolean): void;
-    setRowHeightHandler(rowHeight: number): void;
-    directionchangeHandler(): void;
-    setColNum(numberString: string): void;
-    created(): void;
-    beforeDestroy(): void;
     mounted(): void;
-    onIsDraggableChanged(): void;
-    onDraggableChanged(): void;
-    onIsResizableChanged(): void;
-    onResizableChanged(): void;
-    onRowHeightChanged(): void;
-    onColsChanged(): void;
-    onContainerWidthChanged(): void;
-    onXChanged(newVal: number): void;
     onYChanged(newVal: number): void;
-    onHChanged(newVal: number): void;
-    onWChanged(newVal: number): void;
-    onRTLChanged(): void;
-    resizableHandleClass(): string;
     createStyle(): void;
     handleResize(event: InteractEvent): void;
     handleDrag(event: InteractEvent): void;
@@ -99,6 +80,5 @@ export default class GridItemComponent extends Vue {
         w: number;
         h: number;
     };
-    updateWidth(width: number, colNum?: number): void;
     compact(): void;
 }

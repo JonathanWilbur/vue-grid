@@ -1,14 +1,10 @@
 export
-interface LayoutItemRequired {
+interface LayoutItem {
 	w : number,
 	h : number,
 	x : number,
 	y : number,
 	i : string
-};
-
-export
-interface LayoutItem extends LayoutItemRequired {
     minW? : number,
     minH? : number,
     maxW? : number,
@@ -21,46 +17,6 @@ interface LayoutItem extends LayoutItemRequired {
 
 export
 type Layout = Array<LayoutItem>;
-
-export
-type Position = {
-    left? : number,
-    right? : number,
-    top : number,
-    width? : number,
-    height? : number
-};
-
-export
-type DragCallbackData = {
-    node : HTMLElement,
-    x : number,
-    y : number,
-    deltaX : number,
-    deltaY : number,
-    lastX : number,
-    lastY : number
-};
-
-export
-interface DragEvent extends DragCallbackData {
-    e: Event
-};
-
-export
-type Size = {
-    width : number,
-    height : number
-};
-
-export
-type ResizeEvent = {
-    e : Event,
-    node: HTMLElement,
-    size: Size
-};
-
-// const isProduction = process.env.NODE_ENV === 'production';
 
 /**
  * Return the bottom coordinate of the layout.
@@ -77,20 +33,6 @@ function bottom (layout : Layout) : number {
         if (bottomY > max) max = bottomY;
     }
     return max;
-}
-
-export
-function cloneLayout (layout : Layout) : Layout {
-    const newLayout : Layout = Array(layout.length);
-    for (let i : number = 0, len : number = layout.length; i < len; i++) {
-        newLayout[i] = cloneLayoutItem(layout[i]);
-    }
-    return newLayout;
-}
-
-// Fast path to cloning, since this is monomorphic
-export function cloneLayoutItem(layoutItem: LayoutItem): LayoutItem {
-    return JSON.parse(JSON.stringify(layoutItem));
 }
 
 /**
@@ -152,60 +94,19 @@ function compact (layout : Layout, verticalCompact : boolean) : Layout {
 export
 function compactItem (compareWith : Layout, l : LayoutItem, verticalCompact : boolean) : LayoutItem {
 
-    if (verticalCompact) {
+    if (verticalCompact)
         // Move the element up as far as it can go without colliding.
-        while (l.y > 0 && !getFirstCollision(compareWith, l)) {
-            l.y--;
-        }
-    }
+        while (l.y > 0 && !getFirstCollision(compareWith, l)) l.y--;
 
     // Move it down, and keep moving it down if it's colliding.
     let collides;
-    while((collides = getFirstCollision(compareWith, l))) {
+    while((collides = getFirstCollision(compareWith, l)))
         l.y = collides.y + collides.h;
-    }
 
     return l;
 }
 
-/**
- * Given a layout, make sure all elements fit within its bounds.
- *
- * @param  {Array} layout Layout array.
- * @param  {Number} bounds Number of columns.
- */
-export
-function correctBounds (layout : Layout, bounds : { cols : number }) : Layout {
-
-    const collidesWith = getStatics(layout);
-
-    for (let i = 0, len = layout.length; i < len; i++) {
-        const l = layout[i];
-
-        // If it overflows right
-        if ((l.x + l.w) > bounds.cols) l.x = (bounds.cols - l.w);
-
-        // If it overflows left
-        if (l.x < 0) {
-            l.x = 0;
-            l.w = bounds.cols;
-        }
-
-        if (!l.static)
-            collidesWith.push(l);
-        else {
-            // If this is static and collides with other statics, we must move it down.
-            // We have to do something nicer than just letting them overlap.
-            while(getFirstCollision(collidesWith, l)) {
-                l.y++;
-            }
-        }
-    }
-
-    return layout;
-}
-
-// REVIEW: A dictionary may be better than this function.
+// FIXME: A dictionary would be better than this function.
 /**
  * Get a layout item by ID. Used so we can override later on if necessary.
  *
@@ -264,17 +165,14 @@ function getStatics (layout : Layout) : Array<LayoutItem> {
  */
 export
 function moveElement (layout : Layout, l : LayoutItem, x? : number, y? : number, isUserAction? : boolean) : Layout {
-
     if (l.static) return layout;
+    if (l.y === y && l.x === x) return layout;
 
-    // Short-circuit if nothing to do.
-    //if (l.y === y && l.x === x) return layout;
-
-    const movingUp = y && l.y > y;
+    const movingUp = (y && (l.y > y)); // REVIEW: Do you need the first condition?
 
     // This is quite a bit faster than extending the object
-    if (typeof l.x === 'undefined') l.x = x || 0;
-    if (typeof l.y === 'undefined') l.y = y || 0;
+    if (typeof l.x === 'undefined') l.x = x || 0; // REVIEW
+    if (typeof l.y === 'undefined') l.y = y || 0; // REVIEW
     l.moved = true;
 
     // If this collides with anything, move it.
@@ -288,13 +186,9 @@ function moveElement (layout : Layout, l : LayoutItem, x? : number, y? : number,
     // Move each item that collides away from this element.
     for (let i = 0, len = collisions.length; i < len; i++) {
         const collision = collisions[i];
-
-        // Short circuit so we can't infinite loop
-        if (collision.moved) continue;
-
+        if (collision.moved) continue; // So we can't infinite loop
         // This makes it feel a bit more precise by waiting to swap for just a bit when moving up.
         if (l.y > collision.y && l.y - collision.y > collision.h / 4) continue;
-
         // Don't move static items - we have to move *this* element away
         if (collision.static) {
             layout = moveElementAwayFromCollision(layout, collision, l, isUserAction);
@@ -302,7 +196,6 @@ function moveElement (layout : Layout, l : LayoutItem, x? : number, y? : number,
             layout = moveElementAwayFromCollision(layout, l, collision, isUserAction);
         }
     }
-
     return layout;
 }
 
@@ -341,18 +234,6 @@ function moveElementAwayFromCollision (layout : Layout, collidesWith : LayoutIte
     // Previously this was optimized to move below the collision directly, but this can cause problems
     // with cascading moves, as an item may actually leapflog a collision and cause a reversal in order.
     return moveElement(layout, itemToMove, undefined, itemToMove.y + 1);
-}
-
-// REVIEW: Is this really necessary?
-/**
- * Helper to convert a number to a percentage string.
- *
- * @param  {Number} num Any number
- * @return {String}     That number as a percentage.
- */
-export
-function perc (num : number) : string {
-    return ((num * 100) + '%');
 }
 
 // REVIEW: Use more strictly-typed return value.
@@ -399,7 +280,7 @@ function setTransformRtl (top : number, right : number, width : number, height :
 
 // REVIEW: Use more strictly-typed return value.
 export
-function setTopLeft (top : number, left : number, width : number, height : number): Object {
+function setTopLeft (top : number, left : number, width : number, height : number) : Object {
     return {
         top: top + "px",
         left: left + "px",
@@ -429,7 +310,6 @@ function setTopRight (top : number, right : number, width : number, height : num
     };
 }
 
-
 /**
  * Get layout items sorted from top left to right and down.
  *
@@ -446,70 +326,6 @@ function sortLayoutItemsByRowCol (layout : Layout) : Layout {
         return -1;
     });
 }
-
-// REVIEW: Is this necessary if you use TypeScript?
-/**
- * Validate a layout. Throws errors.
- *
- * @param  {Array}  layout        Array of layout items.
- * @param  {String} [contextName] Context name for errors.
- * @throw  {Error}                Validation error.
- */
-// export
-// function validateLayout (layout : Layout, contextName : string) : void {
-
-//     contextName = contextName || "Layout";
-
-//     const subProps = ['x', 'y', 'w', 'h'];
-
-//     if (!Array.isArray(layout))
-//         throw new Error(contextName + " must be an array!");
-
-//     for (let i : number = 0, len : number = layout.length; i < len; i++) {
-
-//         const item = layout[i];
-//         for (let j : number = 0; j < subProps.length; j++) {
-//             if (typeof item[subProps[j]] !== 'number')
-//                 throw new Error('VueGridLayout: ' + contextName + '[' + i + '].' + subProps[j] + ' must be a number!');
-//         }
-
-//         if (item.i && typeof item.i !== 'string')
-//             throw new Error('VueGridLayout: ' + contextName + '[' + i + '].i must be a string!');
-
-//         if (item.static !== undefined && typeof item.static !== 'boolean')
-//             throw new Error('VueGridLayout: ' + contextName + '[' + i + '].static must be a boolean!');
-
-//     }
-// }
-
-// REVIEW: I don't think this is necessary at all. This is React stuff.
-// export
-// function autoBindHandlers (el : Object, fns : Array<string>) : void {
-//     fns.forEach((key) => el[key] = el[key].bind(el));
-// }
-
-// REVIEW: Is this necessary?
-/**
- * Convert a JS object to CSS string. Similar to React's output of CSS.
- * @param obj
- * @returns {string}
- */
-// export
-// function createMarkup (obj : object) : string {
-//     let keys = Object.keys(obj);
-//     if (!keys.length) return '';
-//     let i : number, len : number = keys.length;
-//     let result : string = '';
-
-//     for (i = 0; i < len; i++) {
-//         let key = keys[i];
-//         let val = obj[key];
-//         result += hyphenate(key) + ':' + addPx(key, val) + ';';
-//     }
-
-//     return result;
-// }
-
 
 /* The following list is defined in React's core */
 export
@@ -545,53 +361,3 @@ const IS_UNITLESS : { [ key : string ] : boolean } = {
     strokeOpacity: true,
     strokeWidth: true
 };
-
-/**
- * Will add px to the end of style values which are Numbers.
- * @param name
- * @param value
- * @returns {*}
- */
-export
-function addPx (name : string, value : number) : string {
-    if ((name in IS_UNITLESS) && IS_UNITLESS[name]) {
-        return (value + 'px');
-    } else {
-        return value.toString();
-    }
-}
-
-export
-const hyphenateRE = /([a-z\d])([A-Z])/g;
-
-/**
- * Hyphenate a camelCase string.
- *
- * @param {String} str
- * @return {String}
- */
-export
-function hyphenate (str : string) {
-    return str.replace(hyphenateRE, '$1-$2').toLowerCase();
-}
-
-// REVIEW: Usage. This might be a candidate for replacement with a dictionary.
-// REVIEW: ... or just deletion.
-// export
-// function findItemInArray (array, property, value) {
-//     for (let i : number = 0; i < array.length; i++)
-//         if (array[i][property] == value)
-//             return true;
-
-//     return false;
-// }
-
-// export
-// function findAndRemove(array, property, value) {
-//     array.forEach(function (result, index) {
-//         if (result[property] === value) {
-//             //Remove from array
-//             array.splice(index, 1);
-//         }
-//     });
-// }

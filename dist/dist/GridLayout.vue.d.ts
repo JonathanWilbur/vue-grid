@@ -1,5 +1,5 @@
 import { Vue } from "vue-property-decorator";
-import { LayoutItem, LayoutItemRequired } from "./utils";
+import { LayoutItem } from "./utils";
 export default class GridLayoutComponent extends Vue {
     eventBus: Vue;
     autoSize: boolean;
@@ -17,21 +17,21 @@ export default class GridLayoutComponent extends Vue {
     mergedStyle: object;
     lastLayoutLength: number;
     isDragging: boolean;
-    placeholder: LayoutItemRequired;
+    isResizing: boolean;
+    placeholder: {
+        x: number;
+        y: number;
+        w: number;
+        h: number;
+        i: string;
+    };
     $refs: {
         item: HTMLElement;
     };
-    resizeEventHandler(eventType: string, i: string, x: number, y: number, h: number, w: number): void;
-    dragEventHandler(eventType: string, i: string, x: number, y: number, h: number, w: number): void;
     created(): void;
     beforeDestroy(): void;
     mounted(): void;
     onWidthChange(): void;
-    onLayoutChange(): void;
-    onColNumChange(val: number): void;
-    onRowHeightChange(): void;
-    onIsDraggableChange(): void;
-    onIsResizableChange(): void;
     layoutUpdate(): void;
     updateHeight(): void;
     onWindowResize(): void;

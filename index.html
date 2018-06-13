@@ -16,17 +16,20 @@
         :row-height="30"
         :margin="[10, 10]"
         :is-draggable="true"
-        :is-resizable="resizable"
+        :is-resizable="true"
         :vertical-compact="true"
-        :use-css-transforms="true">
+        :use-css-transforms="false">
         <grid-item v-for="item in layout"
+            :cols="12"
             :x="item.x"
             :y="item.y"
             :w="item.w"
             :h="item.h"
             :i="item.i"
             :key="item.i"
-            :is-draggable="true">
+            :is-draggable="true"
+            :is-resizable="true"
+            :right-to-left="false">
             <span class="text">{{item.i}}</span>
         </grid-item>
     </grid-layout>

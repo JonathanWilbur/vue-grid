@@ -24,8 +24,6 @@
         "./source/GridItem.vue",
         "./source/GridLayout.vue",
         "./source/index.ts",
-        "./source/ResponsiveGridLayout.vue",
-        "./source/responsiveUtils.ts",
         "./source/utils.ts"
     ]
 }

@@ -1,11 +1,9 @@
-export interface LayoutItemRequired {
+export interface LayoutItem {
     w: number;
     h: number;
     x: number;
     y: number;
     i: string;
-}
-export interface LayoutItem extends LayoutItemRequired {
     minW?: number;
     minH?: number;
     maxW?: number;
@@ -16,34 +14,6 @@ export interface LayoutItem extends LayoutItemRequired {
     isResizable?: boolean;
 }
 export declare type Layout = Array<LayoutItem>;
-export declare type Position = {
-    left?: number;
-    right?: number;
-    top: number;
-    width?: number;
-    height?: number;
-};
-export declare type DragCallbackData = {
-    node: HTMLElement;
-    x: number;
-    y: number;
-    deltaX: number;
-    deltaY: number;
-    lastX: number;
-    lastY: number;
-};
-export interface DragEvent extends DragCallbackData {
-    e: Event;
-}
-export declare type Size = {
-    width: number;
-    height: number;
-};
-export declare type ResizeEvent = {
-    e: Event;
-    node: HTMLElement;
-    size: Size;
-};
 /**
  * Return the bottom coordinate of the layout.
  *
@@ -51,8 +21,6 @@ export declare type ResizeEvent = {
  * @return {Number}       Bottom coordinate.
  */
 export declare function bottom(layout: Layout): number;
-export declare function cloneLayout(layout: Layout): Layout;
-export declare function cloneLayoutItem(layoutItem: LayoutItem): LayoutItem;
 /**
  * Given two layoutitems, check if they collide.
  *
@@ -73,15 +41,6 @@ export declare function compact(layout: Layout, verticalCompact: boolean): Layou
  * Compact an item in the layout.
  */
 export declare function compactItem(compareWith: Layout, l: LayoutItem, verticalCompact: boolean): LayoutItem;
-/**
- * Given a layout, make sure all elements fit within its bounds.
- *
- * @param  {Array} layout Layout array.
- * @param  {Number} bounds Number of columns.
- */
-export declare function correctBounds(layout: Layout, bounds: {
-    cols: number;
-}): Layout;
 /**
  * Get a layout item by ID. Used so we can override later on if necessary.
  *
@@ -128,13 +87,6 @@ export declare function moveElement(layout: Layout, l: LayoutItem, x?: number, y
  *                                   by the user.
  */
 export declare function moveElementAwayFromCollision(layout: Layout, collidesWith: LayoutItem, itemToMove: LayoutItem, isUserAction?: boolean): Layout;
-/**
- * Helper to convert a number to a percentage string.
- *
- * @param  {Number} num Any number
- * @return {String}     That number as a percentage.
- */
-export declare function perc(num: number): string;
 export declare function setTransform(top: number, left: number, width: number, height: number): Object;
 /**
  * Just like the setTransform method, but instead it will return a negative value of right.
@@ -164,33 +116,6 @@ export declare function setTopRight(top: number, right: number, width: number, h
  * @return {Array}        Layout, sorted static items first.
  */
 export declare function sortLayoutItemsByRowCol(layout: Layout): Layout;
-/**
- * Validate a layout. Throws errors.
- *
- * @param  {Array}  layout        Array of layout items.
- * @param  {String} [contextName] Context name for errors.
- * @throw  {Error}                Validation error.
- */
-/**
- * Convert a JS object to CSS string. Similar to React's output of CSS.
- * @param obj
- * @returns {string}
- */
 export declare const IS_UNITLESS: {
     [key: string]: boolean;
 };
-/**
- * Will add px to the end of style values which are Numbers.
- * @param name
- * @param value
- * @returns {*}
- */
-export declare function addPx(name: string, value: number): string;
-export declare const hyphenateRE: RegExp;
-/**
- * Hyphenate a camelCase string.
- *
- * @param {String} str
- * @return {String}
- */
-export declare function hyphenate(str: string): string;

@@ -1,0 +1,8 @@
+- Fix broken resizing
+- Remove spiderweb of callback recursion
+- Make methods private where possible
+- Remove the grid
+- Give the variables more sensible names
+- Review the classes applied to each template
+- Fix Right-to-Left
+- Optional Vertical Compact

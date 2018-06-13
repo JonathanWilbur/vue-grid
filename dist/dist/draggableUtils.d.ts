@@ -1,9 +1,5 @@
 import { InteractEvent } from "interactjs";
-export declare function getControlPosition(e: InteractEvent): {
-    x: number;
-    y: number;
-};
-export declare function offsetXYFromParentOf(evt: InteractEvent): {
+export declare function getControlPosition(evt: InteractEvent): {
     x: number;
     y: number;
 };

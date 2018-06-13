@@ -2,7 +2,7 @@
     <div ref="item" class="vue-grid-layout" :style="mergedStyle">
         <slot></slot>
         <grid-item class="vue-grid-placeholder"
-            v-show="isDragging"
+            v-show="isDragging || isResizing"
             :x="placeholder.x"
             :y="placeholder.y"
             :w="placeholder.w"
@@ -14,12 +14,8 @@
 
 <script lang="ts">
 import { Vue, Component, Prop, Watch, Provide } from "vue-property-decorator";
-import { bottom, compact, getLayoutItem, moveElement, LayoutItem, LayoutItemRequired } from "./utils"; // Rem
+import { bottom, getLayoutItem, compact, moveElement, LayoutItem } from "./utils";
 import GridItemComponent from "./GridItem.vue";
-
-// REVIEW: These libraries will never support TypeScript.
-// import elementResizeDetectorMaker from "element-resize-detector";
-// import "element-resize-detector" as elementResizeDetectorMaker;
 
 @Component({
     components: {
@@ -37,18 +33,19 @@ export default class GridLayoutComponent extends Vue {
     @Prop({ default: Infinity }) maxRows! : number;
     @Prop({ default: [ 10, 10 ]}) margin! : [number, number];
 
-    @Prop({ default: true }) isDraggable! : boolean;
-    @Prop({ default: false }) isResizable! : boolean;
-    @Prop({ default: false }) isMirrored! : boolean;
-    @Prop({ default: true }) useCssTransforms! : boolean;
-    @Prop({ default: true }) verticalCompact! : boolean;
+    @Prop({ default: true }) isDraggable! : boolean; // This is literally not even used.
+    @Prop({ default: false }) isResizable! : boolean; // Neither is this.
+    @Prop({ default: false }) isMirrored! : boolean; // Or this.
+    @Prop({ default: true }) useCssTransforms! : boolean; // Or this.
+    @Prop({ default: true }) verticalCompact! : boolean; // REVIEW: What does this even do?
     @Prop({ default: [] }) layout! : LayoutItem[];
 
-    public width : number = 0;
+    public width : number = Infinity;
     public mergedStyle : object = {};
     public lastLayoutLength : number = 0;
     public isDragging : boolean = false;
-    public placeholder : LayoutItemRequired = {
+    public isResizing : boolean = false;
+    public placeholder = {
         x: 0,
         y: 0,
         w: 0,
@@ -57,124 +54,43 @@ export default class GridLayoutComponent extends Vue {
     };
 
     public $refs!: {
-        item : HTMLElement
-    }
-
-    public resizeEventHandler (eventType : string, i : string, x : number, y : number, h : number, w : number) : void {
-        this.resizeEvent(eventType, i, x, y, h, w);
-    }
-
-    public dragEventHandler (eventType : string, i : string, x : number, y : number, h : number, w : number) : void {
-        this.dragEvent(eventType, i, x, y, h, w);
+        item : HTMLElement;
     }
 
     public created () : void {
-        // this._provided.eventBus = new Vue();
-        // this.eventBus = this._provided.eventBus;
-        this.eventBus.$on('resizeEvent', this.resizeEventHandler);
-        this.eventBus.$on('dragEvent', this.dragEventHandler);
+        this.eventBus.$on('resizeEvent', this.resizeEvent);
+        this.eventBus.$on('dragEvent', this.dragEvent);
     }
 
     public beforeDestroy () : void {
-        this.eventBus.$off('resizeEvent', this.resizeEventHandler);
-        this.eventBus.$off('dragEvent', this.dragEventHandler);
+        this.eventBus.$off('resizeEvent', this.resizeEvent);
+        this.eventBus.$off('dragEvent', this.dragEvent);
         window.removeEventListener("resize", this.onWindowResize);
     }
 
     public mounted () : void {
-        let self = this;
-
-        /* REVIEW:
-         * Come to think of it: are all of these $nextTick calls here as a
-         * shitty workaround to a potential race condition?
-        */
-        this.$nextTick(function () {
-            // validateLayout(this.layout); // TODO: Replace this.
-
-            this.$nextTick(function() {
-                if (self.width === null) {
-                    self.onWindowResize();
-                    window.addEventListener('resize', self.onWindowResize);
-                }
-                compact(self.layout, self.verticalCompact);
-
-                self.updateHeight();
-                self.$nextTick(function () {
-                    // let erd = elementResizeDetectorMaker({ strategy: "scroll" });
-                    // erd.listenTo(self.$refs.item, function () {
-                    //     self.onWindowResize();
-                    // });
-                    self.$refs.item.addEventListener("onresize", function () {
-                        self.onWindowResize();
-                    });
-                });
-            });
-
-            window.onload = function() {
-                if (self.width === null) {
-                    self.onWindowResize();
-                    //self.width = self.$el.offsetWidth;
-                    window.addEventListener('resize', self.onWindowResize);
-                }
-                compact(self.layout, self.verticalCompact);
-
-                self.updateHeight();
-                self.$nextTick(function () {
-                    // let erd = elementResizeDetectorMaker({ strategy: "scroll" });
-                    // erd.listenTo(self.$refs.item, function () {
-                    //     self.onWindowResize();
-                    // });
-                    self.$refs.item.addEventListener("onresize", function () {
-                        self.onWindowResize();
-                    });
-                });
-            };
-        });
+        if (this.width === Infinity) {
+            this.onWindowResize();
+            window.addEventListener('resize', this.onWindowResize);
+        }
+        compact(this.layout, this.verticalCompact);
+        this.updateHeight();
+        this.$refs.item.addEventListener("onresize", () => { this.onWindowResize(); });
     }
 
     @Watch("width")
     public onWidthChange () : void {
-        this.$nextTick(function () {
-            this.eventBus.$emit("updateWidth", this.width);
-            this.updateHeight();
-        });
+        this.eventBus.$emit("updateWidth", this.width);
+        this.updateHeight();
     }
 
     @Watch("layout")
-    public onLayoutChange () : void {
-        this.layoutUpdate();
-    }
-
-    @Watch("colNum")
-    public onColNumChange (val : number) : void {
-        this.eventBus.$emit("setColNum", val);
-    }
-
-    @Watch("rowHeight")
-    public onRowHeightChange () : void {
-        this.eventBus.$emit("setRowHeight", this.rowHeight);
-    }
-
-    @Watch("isDraggable")
-    public onIsDraggableChange () : void {
-        this.eventBus.$emit("setDraggable", this.isDraggable);
-    }
-
-    @Watch("isResizable")
-    public onIsResizableChange () : void {
-        this.eventBus.$emit("setResizable", this.isResizable);
-    }
-
     public layoutUpdate () : void {
-        if (this.layout !== undefined) {
-            if (this.layout.length !== this.lastLayoutLength) {
-                //console.log("### LAYOUT UPDATE!");
-                this.lastLayoutLength = this.layout.length;
-            }
-            compact(this.layout, this.verticalCompact);
-            this.eventBus.$emit("updateWidth", this.width);
-            this.updateHeight();
-        }
+        if (this.layout.length !== this.lastLayoutLength)
+            this.lastLayoutLength = this.layout.length;
+        compact(this.layout, this.verticalCompact);
+        this.eventBus.$emit("updateWidth", this.width);
+        this.updateHeight();
     }
 
     public updateHeight () : void {
@@ -184,9 +100,8 @@ export default class GridLayoutComponent extends Vue {
     }
 
     public onWindowResize () : void {
-        if (this.$refs !== null && this.$refs.item !== null && this.$refs.item !== undefined) {
+        if (this.$refs !== null && this.$refs.item !== null && this.$refs.item !== undefined)
             this.width = this.$refs.item.offsetWidth;
-        }
     }
 
     public containerHeight () : string {
@@ -201,16 +116,12 @@ export default class GridLayoutComponent extends Vue {
             this.placeholder.y = y;
             this.placeholder.w = w;
             this.placeholder.h = h;
-            this.$nextTick(function() {
-                this.isDragging = true;
-            });
+            this.isDragging = true;
             this.eventBus.$emit("updateWidth", this.$el.clientWidth); // REVIEW: Why?
-        } else {
-            this.$nextTick(function() {
-                this.isDragging = false;
-            });
-        }
+        } else
+            this.isDragging = false;
 
+        // TODO: Change layout to be a dictionary
         let l : LayoutItem = getLayoutItem(this.layout, id);
         l.x = x;
         l.y = y;
@@ -218,6 +129,7 @@ export default class GridLayoutComponent extends Vue {
         // Move the element to the dragged location.
         this.layout = moveElement(this.layout, l, x, y, true);
         compact(this.layout, this.verticalCompact);
+        // FIXME: Fix this ignoramus' issue:
         // needed because vue can't detect changes on array element properties
         this.eventBus.$emit("compact");
         this.updateHeight();
@@ -231,17 +143,10 @@ export default class GridLayoutComponent extends Vue {
             this.placeholder.y = y;
             this.placeholder.w = w;
             this.placeholder.h = h;
-            this.$nextTick(function() {
-                this.isDragging = true;
-            });
-            //this.$broadcast("updateWidth", this.width);
+            this.isResizing = true;
             this.eventBus.$emit("updateWidth", this.width);
-
-        } else {
-            this.$nextTick(function() {
-                this.isDragging = false;
-            });
-        }
+        } else
+            this.isResizing = false;
         let l = getLayoutItem(this.layout, id);
         l.h = h;
         l.w = w;
