@@ -22,6 +22,8 @@ import * as interact from "interactjs/index";
     the GridLayout.vue push this state down via props.
 */
 // NOTE: I notice that resizing vertically does not work. Idk if that is expected behavior.
+// NOTE: There is a weird, unexpected, and constant trailing decimal after the lastY
+//       - Actually, maybe that makes sense, since the grid is at a fixed location.
 
 export
 type Size = {
@@ -63,9 +65,8 @@ export default class GridItemComponent extends Vue {
     @Prop({ default: "" }) public dragAllowFrom! : string;
     @Prop({ default: "a, button" }) public resizeIgnoreFrom! : string;
 
-    // public containerWidth : number = 100;
-    public margin : [ number, number ] = [10, 10];
-    public maxRows : number = Infinity;
+    public margin : [ number, number ] = [10, 10]; // FIXME: Make it a prop
+    public maxRows : number = Infinity; // FIXME: Make it a prop
     public useCssTransforms : boolean = true; // FIXME: Make it a prop
     public isDragging : boolean = false;
     public dragging? : Position = undefined; // FIXME: Deceptive name
@@ -142,6 +143,7 @@ export default class GridItemComponent extends Vue {
         }
     }
 
+    // REVIEW: y is a property, and should not change like this.
     @Watch('y')
     public onYChanged (newVal : number) : void {
         this.innerY = newVal;
@@ -159,7 +161,15 @@ export default class GridItemComponent extends Vue {
             this.innerW = this.w;
         }
 
-        let pos = this.calcPosition(this.innerX, this.innerY, this.innerW, this.innerH);
+        let pos = this.position();
+        // { // See the TODO above this.position.
+        //     let pos2 = this.calcPosition(this.innerX, this.innerY, this.innerW, this.innerH);
+        //     console.assert(pos.height === pos2.height,  "height:    l:" + pos.height + " r:" + pos2.height);
+        //     console.assert(pos.left === pos2.left,      "left:      l:" + pos.left + " r:" + pos2.left);
+        //     console.assert(pos.right === pos2.right,    "right:     l:" + pos.right + " r:" + pos2.right);
+        //     console.assert(pos.top === pos2.top,        "top:       l:" + pos.top + " r:" + pos2.top);
+        //     console.assert(pos.width === pos2.width,    "width:     l:" + pos.width + " r:" + pos2.width);
+        // }
 
         // REVIEW: I added '&& this.dragging' here.
         if (this.isDragging && this.dragging) {
@@ -208,7 +218,7 @@ export default class GridItemComponent extends Vue {
             case "resizestart":
                 this.previousW = this.innerW;
                 this.previousH = this.innerH;
-                pos = this.calcPosition(this.innerX, this.innerY, this.innerW, this.innerH);
+                pos = this.position();
                 newSize.width = (pos.width || 0);
                 newSize.height = (pos.height || 0);
                 this.resizing = newSize;
@@ -226,7 +236,7 @@ export default class GridItemComponent extends Vue {
                 this.resizing = newSize;
                 break;
             case "resizeend":
-                pos = this.calcPosition(this.innerX, this.innerY, this.innerW, this.innerH);
+                pos = this.position();
                 newSize.width = pos.width || 0;
                 newSize.height = pos.height || 0;
                 this.resizing = undefined;
@@ -266,12 +276,14 @@ export default class GridItemComponent extends Vue {
             left: 0
         };
 
+        let parentRect : any;
+        let clientRect : any;
         switch (event.type) {
             case "dragstart":
                 this.previousX = this.innerX;
                 this.previousY = this.innerY;
-                let parentRect = event.target.offsetParent.getBoundingClientRect();
-                let clientRect = event.target.getBoundingClientRect();
+                parentRect = event.target.offsetParent.getBoundingClientRect();
+                clientRect = event.target.getBoundingClientRect();
                 newPosition.left = (clientRect.left - parentRect.left);
                 if (this.rightToLeft) newPosition.left *= -1;
                 newPosition.top = (clientRect.top - parentRect.top);
@@ -316,45 +328,63 @@ export default class GridItemComponent extends Vue {
         this.eventBus.$emit("dragEvent", event.type, this.i, pos.x, pos.y, this.innerH, this.innerW);
     }
 
-    // FIXME: Improve the specificity of the return type.
-    // TODO: Make this a property
-    public calcPosition (x : number, y : number, w : number, h : number) : Position {
-        const colWidth = this.calcColWidth(); // TODO: Convert this to a property
+    /* TODO:
+    * Make this a property some time in the future, when it works. As of right
+    * now, there is a strange issue where making this a property--even without
+    * changing a single line of code--makes the grid-snapping stop working for
+    * some reason.
+    *
+    * Here is what I know about this issue:
+    * * The inputs are the same for both the getter and method.
+    * * The outputs are NOT the same for both the getter and method.
+    * * Changing the name of the getter to something else does not resolve the issue.
+    * * Returning the output of the method equivalent does not resolve the issue.
+    *   * i.e. `get position () : void { return this.calcPosition(); }`
+    *
+    * My current suspicion is that it has something to do with how Vue handles
+    * updates from getters. Methods have to be called, but computed properties
+    * changing may be making parts of the code run unintentionally.
+    *
+    */
+    public position () : Position {
+        const colWidth = this.columnWidthInPX;
         // TODO: Use one return statement, if possible
         if (this.rightToLeft) {
             return {
-                right: Math.round(colWidth * x + (x + 1) * this.margin[0]),
-                top: Math.round(this.rowHeight * y + (y + 1) * this.margin[1]),
-                width: w === Infinity ? w : Math.round(colWidth * w + Math.max(0, w - 1) * this.margin[0]),
-                height: h === Infinity ? h : Math.round(this.rowHeight * h + Math.max(0, h - 1) * this.margin[1])
+                right: Math.round(colWidth * this.innerX + (this.innerX + 1) * this.margin[0]),
+                top: Math.round(this.rowHeight * this.innerY + (this.innerY + 1) * this.margin[1]),
+                width: this.innerW === Infinity ? this.innerW : Math.round(colWidth * this.innerW + Math.max(0, this.innerW - 1) * this.margin[0]),
+                height: this.innerH === Infinity ? this.innerH : Math.round(this.rowHeight * this.innerH + Math.max(0, this.innerH - 1) * this.margin[1])
             };
         } else {
             return {
-                left: Math.round(colWidth * x + (x + 1) * this.margin[0]),
-                top: Math.round(this.rowHeight * y + (y + 1) * this.margin[1]),
-                width: w === Infinity ? w : Math.round(colWidth * w + Math.max(0, w - 1) * this.margin[0]),
-                height: h === Infinity ? h : Math.round(this.rowHeight * h + Math.max(0, h - 1) * this.margin[1])
+                left: Math.round(colWidth * this.innerX + (this.innerX + 1) * this.margin[0]),
+                top: Math.round(this.rowHeight * this.innerY + (this.innerY + 1) * this.margin[1]),
+                width: this.innerW === Infinity ? this.innerW : Math.round(colWidth * this.innerW + Math.max(0, this.innerW - 1) * this.margin[0]),
+                height: this.innerH === Infinity ? this.innerH : Math.round(this.rowHeight * this.innerH + Math.max(0, this.innerH - 1) * this.margin[1])
             };
         }
     }
 
     /**
-    * Translate x and y coordinates from pixels to grid units.
+    * Translate this.innerX and y coordinates from pixels to grid units.
     * @param  {number} top  Top position (relative to parent) in pixels.
     * @param  {number} left Left position (relative to parent) in pixels.
     * @return {object} x and y in grid units.
     */
     public calcXY (top : number, left : number) : { x : number, y : number } {
-        const colWidth = this.calcColWidth();
-        let x = Math.round((left - this.margin[0]) / (colWidth + this.margin[0]));
+        // const colWidth = this.calcColWidth();
+        let x = Math.round((left - this.margin[0]) / (this.columnWidthInPX + this.margin[0]));
         let y = Math.round((top - this.margin[1]) / (this.rowHeight + this.margin[1]));
         x = Math.max(Math.min(x, this.cols - this.innerW), 0);
         y = Math.max(Math.min(y, this.maxRows - this.innerH), 0);
+        // console.log(`${this.maxRows} ${this.innerH} ${top} ${this.margin[1]} ${this.rowHeight} ${this.columnWidthInPX}`);
         return {x, y};
     }
 
-    public calcColWidth () : number {
-        return ((this.$parent.$el.clientWidth - (this.margin[0] * (this.cols + 1))) / this.cols);
+    // REVIEW: How is this actually the column width?
+    get columnWidthInPX () : number {
+        return Math.round((this.$parent.$el.clientWidth - (this.margin[0] * (this.cols + 1))) / this.cols);
     }
 
     /**
@@ -364,17 +394,12 @@ export default class GridItemComponent extends Vue {
     * @return {Object} w, h as grid units.
     */
     public calcWH (height : number, width : number) : { w : number, h : number } {
-        const colWidth = this.calcColWidth();
-        let w = Math.round((width + this.margin[0]) / (colWidth + this.margin[0]));
+        // const colWidth = this.calcColWidth();
+        let w = Math.round((width + this.margin[0]) / (this.columnWidthInPX + this.margin[0]));
         let h = Math.round((height + this.margin[1]) / (this.rowHeight + this.margin[1]));
         w = Math.max(Math.min(w, this.cols - this.innerX), 0);
         h = Math.max(Math.min(h, this.maxRows - this.innerY), 0);
         return {w, h};
-    }
-
-    // REVIEW: What is the point of this?
-    public compact () : void {
-        this.createStyle();
     }
 }
 </script>

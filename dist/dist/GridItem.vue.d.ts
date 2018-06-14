@@ -58,9 +58,9 @@ export default class GridItemComponent extends Vue {
     createStyle(): void;
     handleResize(event: InteractEvent): void;
     handleDrag(event: InteractEvent): void;
-    calcPosition(x: number, y: number, w: number, h: number): Position;
+    position(): Position;
     /**
-    * Translate x and y coordinates from pixels to grid units.
+    * Translate this.innerX and y coordinates from pixels to grid units.
     * @param  {number} top  Top position (relative to parent) in pixels.
     * @param  {number} left Left position (relative to parent) in pixels.
     * @return {object} x and y in grid units.
@@ -69,7 +69,7 @@ export default class GridItemComponent extends Vue {
         x: number;
         y: number;
     };
-    calcColWidth(): number;
+    readonly columnWidthInPX: number;
     /**
     * Given a height and width in pixel values, calculate grid units.
     * @param  {Number} height Height in pixels.
@@ -80,5 +80,4 @@ export default class GridItemComponent extends Vue {
         w: number;
         h: number;
     };
-    compact(): void;
 }
