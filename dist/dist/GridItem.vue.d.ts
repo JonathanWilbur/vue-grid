@@ -56,9 +56,16 @@ export default class GridItemComponent extends Vue {
     mounted(): void;
     onYChanged(newVal: number): void;
     createStyle(): void;
-    handleResize(event: InteractEvent): void;
+    handleResizeStart(event: InteractEvent): void;
+    handleResizeMove(event: InteractEvent): void;
+    handleResizeEnd(event: InteractEvent): void;
     handleDrag(event: InteractEvent): void;
     position(): Position;
+    readonly gridAlignedRightPositionInPixels: number;
+    readonly gridAlignedLeftPositionInPixels: number;
+    readonly gridAlignedTopPositionInPixels: number;
+    readonly gridAlignedWidthInPixels: number;
+    readonly gridAlignedHeightInPixels: number;
     /**
     * Translate this.innerX and y coordinates from pixels to grid units.
     * @param  {number} top  Top position (relative to parent) in pixels.

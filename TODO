@@ -1,4 +1,6 @@
 - Fix broken resizing
+  - Vertical resizing does not work
+- Get the placeholder to come back
 - Remove spiderweb of callback recursion
 - Make methods private where possible
 - Remove the grid

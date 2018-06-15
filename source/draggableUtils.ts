@@ -4,7 +4,7 @@ import { InteractEvent } from "interactjs";
 
 // Get {x, y} positions from event.
 export
-function getControlPosition (evt : InteractEvent) {
+function getControlPosition (evt : InteractEvent) : { x : number, y : number } {
     const offsetParent = ((evt.target ? (<HTMLElement>evt.target).offsetParent : false) || document.body);
     const offsetParentRect = (<HTMLElement>evt.target).offsetParent === document.body ? { left: 0, top: 0 } : offsetParent.getBoundingClientRect();
     return {
