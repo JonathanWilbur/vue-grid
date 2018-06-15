@@ -110,13 +110,9 @@ export default class GridItemComponent extends Vue {
             // };
             let opts = {};
             this.interactObj.draggable(opts);
-            if (!this.dragEventSet) {
-                // TODO: Break this into separate callbacks
-                this.interactObj.on(['dragstart', 'dragmove', 'dragend'], (event : InteractEvent) => {
-                    this.handleDrag(event);
-                });
-                this.dragEventSet = true; // TODO: Get rid of this superfluous state.
-            }
+            this.interactObj.on('dragstart', this.handleDragStart);
+            this.interactObj.on('dragmove', this.handleDragMove);
+            this.interactObj.on('dragend', this.handleDragEnd);
         }
 
         if (this.isResizable) {
@@ -131,9 +127,9 @@ export default class GridItemComponent extends Vue {
                 },
                 // ignoreFrom: this.resizeIgnoreFrom
             });
-            this.interactObj.on(['resizestart'], this.handleResizeStart);
-            this.interactObj.on(['resizemove'], this.handleResizeMove);
-            this.interactObj.on(['resizeend'], this.handleResizeEnd);
+            this.interactObj.on('resizestart', this.handleResizeStart);
+            this.interactObj.on('resizemove', this.handleResizeMove);
+            this.interactObj.on('resizeend', this.handleResizeEnd);
         }
     }
 
@@ -156,7 +152,6 @@ export default class GridItemComponent extends Vue {
         }
 
         let pos = this.position();
-        // console.log(pos);
         // { // See the TODO above this.position.
         //     let pos2 = this.calcPosition(this.innerX, this.innerY, this.innerW, this.innerH);
         //     console.assert(pos.height === pos2.height,  "height:    l:" + pos.height + " r:" + pos2.height);
@@ -244,11 +239,11 @@ export default class GridItemComponent extends Vue {
 
     public handleResizeEnd (event : InteractEvent) : void {
         this.isResizing = false;
+        this.resizing = undefined;
         const { x, y } = getControlPosition(event);
         const newSize : Size = { width: 0, height: 0 };
         let newWidth : number = this.gridAlignedWidthInPixels;
         let newHeight : number = this.gridAlignedHeightInPixels;
-        this.resizing = undefined;
         let newPos = this.calcWH(newHeight, newWidth);
         if (newPos.w < this.minW) newPos.w = this.minW;
         if (newPos.w > this.maxW) newPos.w = this.maxW;
@@ -265,67 +260,69 @@ export default class GridItemComponent extends Vue {
         this.eventBus.$emit("resizeEvent", event.type, this.i, this.innerX, this.innerY, newPos.h, newPos.w);
     }
 
-    public handleDrag (event : InteractEvent) : void {
+    public handleDragStart (event : InteractEvent) : void {
         if (this.isResizing) return;
-        const position = getControlPosition(event);
-        // Get the current drag point from the event. This is used as the offset.
-        if (position === null) return; // not possible but satisfies flow
-        const {x, y} = position;
-        // let shouldUpdate = false;
-        const newPosition = {
-            top: 0,
-            left: 0
-        };
-
-        let parentRect : any;
-        let clientRect : any;
-        switch (event.type) {
-            case "dragstart":
-                this.previousX = this.innerX;
-                this.previousY = this.innerY;
-                parentRect = event.target.offsetParent.getBoundingClientRect();
-                clientRect = event.target.getBoundingClientRect();
-                newPosition.left = (clientRect.left - parentRect.left);
-                if (this.rightToLeft) newPosition.left *= -1;
-                newPosition.top = (clientRect.top - parentRect.top);
-                this.dragging = newPosition;
-                this.isDragging = true;
-                break;
-            case "dragend":
-                if (!this.isDragging) return;
-                parentRect = event.target.offsetParent.getBoundingClientRect();
-                clientRect = event.target.getBoundingClientRect();
-                newPosition.left = (clientRect.left - parentRect.left);
-                if (this.rightToLeft) newPosition.left *= -1;
-                newPosition.top = clientRect.top - parentRect.top;
-                this.dragging = undefined;
-                this.isDragging = false;
-                // shouldUpdate = true;
-                break;
-            case "dragmove":
-                if (!this.dragging) return;
-                const coreEvent : CoreData = createCoreData(this.lastX, this.lastY, x, y);
-                if (this.rightToLeft) {
-                    newPosition.left = ((this.dragging.left || 0) - coreEvent.deltaX);
-                } else {
-                    newPosition.left = ((this.dragging.left || 0) + coreEvent.deltaX);
-                }
-                newPosition.top = this.dragging.top + coreEvent.deltaY;
-                this.dragging = newPosition;
-                break;
-        }
-
-        // REVIEW: I think there is a problem here.
+        this.isDragging = true;
+        const {x, y} = getControlPosition(event);
+        const newPosition = { top: 0, left: 0 };
+        this.previousX = this.innerX;
+        this.previousY = this.innerY;
+        let parentRect : any = event.target.offsetParent.getBoundingClientRect();
+        let clientRect : any = event.target.getBoundingClientRect();
+        newPosition.left = (clientRect.left - parentRect.left);
+        if (this.rightToLeft) newPosition.left *= -1;
+        newPosition.top = (clientRect.top - parentRect.top);
+        this.dragging = newPosition;
         let pos : { x : number, y : number } = this.calcXY(newPosition.top, newPosition.left);
         this.lastX = x;
         this.lastY = y;
-
         if (this.innerX !== pos.x || this.innerY !== pos.y)
             this.$emit("move", this.i, pos.x, pos.y);
+        this.eventBus.$emit("dragEvent", event.type, this.i, pos.x, pos.y, this.innerH, this.innerW);
+    }
 
-        if (event.type === "dragend" && (this.previousX !== this.innerX || this.previousY !== this.innerY))
+    public handleDragMove (event : InteractEvent) : void {
+        if (this.isResizing) return;
+        const {x, y} = getControlPosition(event);
+        const newPosition = { top: 0, left: 0 };
+        if (!this.dragging) return;
+        const coreEvent : CoreData = createCoreData(this.lastX, this.lastY, x, y);
+        if (this.rightToLeft) newPosition.left = ((this.dragging.left || 0) - coreEvent.deltaX);
+        else newPosition.left = ((this.dragging.left || 0) + coreEvent.deltaX);
+        newPosition.top = this.dragging.top + coreEvent.deltaY;
+        this.dragging = newPosition;
+        let pos : { x : number, y : number } = this.calcXY(newPosition.top, newPosition.left);
+        this.lastX = x;
+        this.lastY = y;
+        if (this.innerX !== pos.x || this.innerY !== pos.y)
+            this.$emit("move", this.i, pos.x, pos.y);
+        this.eventBus.$emit("dragEvent", event.type, this.i, pos.x, pos.y, this.innerH, this.innerW);
+    }
+
+    /* NOTE:
+     * When this.dragging = false; is put before the
+     * `if (!this.isDragging) return;` line, the app behaves the same way that
+     * it behaves when the position method below is converted to a getter.
+    */
+    public handleDragEnd (event : InteractEvent) : void {
+        if (this.isResizing) return;
+        if (!this.isDragging) return;
+        this.isDragging = false;
+        this.dragging = undefined;
+        const {x, y} = getControlPosition(event);
+        const newPosition = { top: 0, left: 0 };
+        let parentRect : any = event.target.offsetParent.getBoundingClientRect();
+        let clientRect : any = event.target.getBoundingClientRect();
+        newPosition.left = (clientRect.left - parentRect.left);
+        if (this.rightToLeft) newPosition.left *= -1;
+        newPosition.top = clientRect.top - parentRect.top;
+        let pos : { x : number, y : number } = this.calcXY(newPosition.top, newPosition.left);
+        this.lastX = x;
+        this.lastY = y;
+        if (this.innerX !== pos.x || this.innerY !== pos.y)
+            this.$emit("move", this.i, pos.x, pos.y);
+        if (this.previousX !== this.innerX || this.previousY !== this.innerY)
             this.$emit("moved", this.i, pos.x, pos.y);
-
         this.eventBus.$emit("dragEvent", event.type, this.i, pos.x, pos.y, this.innerH, this.innerW);
     }
 

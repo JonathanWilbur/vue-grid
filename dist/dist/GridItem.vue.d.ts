@@ -59,7 +59,9 @@ export default class GridItemComponent extends Vue {
     handleResizeStart(event: InteractEvent): void;
     handleResizeMove(event: InteractEvent): void;
     handleResizeEnd(event: InteractEvent): void;
-    handleDrag(event: InteractEvent): void;
+    handleDragStart(event: InteractEvent): void;
+    handleDragMove(event: InteractEvent): void;
+    handleDragEnd(event: InteractEvent): void;
     position(): Position;
     readonly gridAlignedRightPositionInPixels: number;
     readonly gridAlignedLeftPositionInPixels: number;
