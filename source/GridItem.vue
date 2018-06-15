@@ -194,6 +194,7 @@ export default class GridItemComponent extends Vue {
         }
     }
 
+    // @Emit("resize") See: https://github.com/kaorun343/vue-property-decorator/issues/103
     public handleResizeStart (event : InteractEvent) : void {
         this.isResizing = true;
         this.previousW = this.innerW;
@@ -213,7 +214,7 @@ export default class GridItemComponent extends Vue {
         this.lastH = y;
         if (this.innerW !== newPos.w || this.innerH !== newPos.h)
             this.$emit("resize", this.i, newPos.h, newPos.w, newHeight, newWidth);
-        this.eventBus.$emit("resizeEvent", event.type, this.i, this.innerX, this.innerY, newPos.h, newPos.w);
+        this.$emit("resizeEvent", event.type, this.i, this.innerX, this.innerY, newPos.h, newPos.w);
     }
 
     public handleResizeMove (event : InteractEvent) : void {
@@ -236,7 +237,7 @@ export default class GridItemComponent extends Vue {
         this.lastH = y;
         if (this.innerW !== newPos.w || this.innerH !== newPos.h)
             this.$emit("resize", this.i, newPos.h, newPos.w, newSize.height, newSize.width);
-        this.eventBus.$emit("resizeEvent", event.type, this.i, this.innerX, this.innerY, newPos.h, newPos.w);
+        this.$emit("resizeEvent", event.type, this.i, this.innerX, this.innerY, newPos.h, newPos.w);
     }
 
     public handleResizeEnd (event : InteractEvent) : void {
@@ -259,7 +260,7 @@ export default class GridItemComponent extends Vue {
             this.$emit("resize", this.i, newPos.h, newPos.w, newSize.height, newSize.width);
         if (this.previousW !== this.innerW || this.previousH !== this.innerH)
             this.$emit("resized", this.i, newPos.h, newPos.w, newSize.height, newSize.width);
-        this.eventBus.$emit("resizeEvent", event.type, this.i, this.innerX, this.innerY, newPos.h, newPos.w);
+        this.$emit("resizeEvent", event.type, this.i, this.innerX, this.innerY, newPos.h, newPos.w);
     }
 
     public handleDragStart (event : InteractEvent) : void {
@@ -280,7 +281,7 @@ export default class GridItemComponent extends Vue {
         this.lastY = y;
         if (this.innerX !== pos.x || this.innerY !== pos.y)
             this.$emit("move", this.i, pos.x, pos.y);
-        this.eventBus.$emit("dragEvent", event.type, this.i, pos.x, pos.y, this.innerH, this.innerW);
+        this.$emit("dragEvent", event.type, this.i, pos.x, pos.y, this.innerH, this.innerW);
     }
 
     public handleDragMove (event : InteractEvent) : void {
@@ -298,7 +299,7 @@ export default class GridItemComponent extends Vue {
         this.lastY = y;
         if (this.innerX !== pos.x || this.innerY !== pos.y)
             this.$emit("move", this.i, pos.x, pos.y);
-        this.eventBus.$emit("dragEvent", event.type, this.i, pos.x, pos.y, this.innerH, this.innerW);
+        this.$emit("dragEvent", event.type, this.i, pos.x, pos.y, this.innerH, this.innerW);
     }
 
     /* NOTE:
@@ -325,7 +326,7 @@ export default class GridItemComponent extends Vue {
             this.$emit("move", this.i, pos.x, pos.y);
         if (this.previousX !== this.innerX || this.previousY !== this.innerY)
             this.$emit("moved", this.i, pos.x, pos.y);
-        this.eventBus.$emit("dragEvent", event.type, this.i, pos.x, pos.y, this.innerH, this.innerW);
+        this.$emit("dragEvent", event.type, this.i, pos.x, pos.y, this.innerH, this.innerW);
     }
 
     /* TODO:

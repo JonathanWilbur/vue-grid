@@ -19,23 +19,6 @@ export
 type Layout = Array<LayoutItem>;
 
 /**
- * Return the bottom coordinate of the layout.
- *
- * @param  {Array} layout Layout array.
- * @return {Number}       Bottom coordinate.
- */
-export
-function bottom (layout : Layout) : number {
-    let max : number = 0;
-    let bottomY : number;
-    for (let i : number = 0, len : number = layout.length; i < len; i++) {
-        bottomY = layout[i].y + layout[i].h;
-        if (bottomY > max) max = bottomY;
-    }
-    return max;
-}
-
-/**
  * Given two layoutitems, check if they collide.
  *
  * @return {Boolean}   True if colliding.
@@ -50,6 +33,10 @@ function collides (l1 : LayoutItem, l2 : LayoutItem) : boolean {
     return true; // boxes overlap
 }
 
+// TODO: Move into GridLayout
+// NOTE: Once you make this use Vue.$set, you will no longer need the eventBus
+//       because its only point is to cause the children to update from the
+//       new layout.
 /**
  * Given a layout, compact it. This involves going down each y coordinate and removing gaps
  * between items.
@@ -63,18 +50,14 @@ export
 function compact (layout : Layout, verticalCompact : boolean) : Layout {
     // Statics go in the compareWith array right away so items flow around them.
     const compareWith = getStatics(layout);
-    // We go through the items by row and column.
-    const sorted = sortLayoutItemsByRowCol(layout);
-    // Holding for new items.
-    const out = Array(layout.length);
+    const sorted = sortLayoutItemsByRowCol(layout); // We go through the items by row and column.
+    const out = Array(layout.length); // Holding for new items.
 
     for (let i : number = 0, len : number = sorted.length; i < len; i++) {
         let l = sorted[i];
 
-        // Don't move static elements
         if (!l.static) {
             l = compactItem(compareWith, l, verticalCompact);
-
             // Add to comparison array. We only collide with items before this one.
             // Statics are already in this array.
             compareWith.push(l);

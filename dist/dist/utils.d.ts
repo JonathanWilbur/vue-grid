@@ -15,13 +15,6 @@ export interface LayoutItem {
 }
 export declare type Layout = Array<LayoutItem>;
 /**
- * Return the bottom coordinate of the layout.
- *
- * @param  {Array} layout Layout array.
- * @return {Number}       Bottom coordinate.
- */
-export declare function bottom(layout: Layout): number;
-/**
  * Given two layoutitems, check if they collide.
  *
  * @return {Boolean}   True if colliding.

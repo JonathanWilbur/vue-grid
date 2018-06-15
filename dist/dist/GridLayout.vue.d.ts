@@ -13,9 +13,6 @@ export default class GridLayoutComponent extends Vue {
     useCssTransforms: boolean;
     verticalCompact: boolean;
     layout: LayoutItem[];
-    width: number;
-    mergedStyle: object;
-    lastLayoutLength: number;
     isDragging: boolean;
     isResizing: boolean;
     placeholder: {
@@ -25,14 +22,9 @@ export default class GridLayoutComponent extends Vue {
         h: number;
         i: string;
     };
-    $refs: {
-        item: HTMLElement;
-    };
-    created(): void;
     mounted(): void;
-    onWidthChange(): void;
-    layoutUpdate(): void;
-    onWindowResize(): void;
+    readonly style: object;
+    readonly width: number;
     readonly height: number;
     dragEvent(eventName: string, id: string, x: number, y: number, h: number, w: number): void;
     resizeEvent(eventName: string, id: string, x: number, y: number, h: number, w: number): void;

@@ -29,3 +29,11 @@ let v = new Vue({
         ]
     }
 });
+
+// setInterval(() => {
+//     // v.$data.layout.push({ x: 15, y: 15, w: 1, h: 4, i: (new Date()).toDateString() });
+//     // v.$data.layout[5].w++;
+//     let x = v.$data.layout[5];
+//     x[5].w++;
+//     v.$set(v.$data, "layout", x);
+// }, 1000);
