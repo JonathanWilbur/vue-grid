@@ -19,19 +19,6 @@
         :is-resizable="true"
         :vertical-compact="true"
         :use-css-transforms="false">
-        <grid-item v-for="item in layout"
-            :cols="12"
-            :x="item.x"
-            :y="item.y"
-            :w="item.w"
-            :h="item.h"
-            :i="item.i"
-            :key="item.i"
-            :is-draggable="true"
-            :is-resizable="true"
-            :right-to-left="false">
-            <span class="text">{{item.i}}</span>
-        </grid-item>
     </grid-layout>
 </div>
 <script src="/examples/01-basic.js"></script>

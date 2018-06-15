@@ -1,6 +1,19 @@
 <template>
     <div ref="item" class="vue-grid-layout" :style="mergedStyle">
-        <slot></slot>
+        <grid-item v-for="item in layout"
+            :cols="12"
+            :x="item.x"
+            :y="item.y"
+            :w="item.w"
+            :h="item.h"
+            :i="item.i"
+            :key="item.i"
+            :is-draggable="true"
+            :is-resizable="true"
+            :right-to-left="false">
+            <span class="text">{{item.i}}</span>
+            <slot></slot>
+        </grid-item>
         <grid-item class="vue-grid-placeholder"
             v-show="isDragging || isResizing"
             :x="placeholder.x"
