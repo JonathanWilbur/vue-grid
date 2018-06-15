@@ -83,6 +83,8 @@ export default class GridItemComponent extends Vue {
     public previousH : number = 0;
     public previousX : number = 0;
     public previousY : number = 0;
+
+    // These are in grid units, not pixels
     public innerX : number = this.x;
     public innerY : number = this.y;
     public innerW : number = this.w;
@@ -390,15 +392,20 @@ export default class GridItemComponent extends Vue {
     * @param  {number} left Left position (relative to parent) in pixels.
     * @return {object} x and y in grid units.
     */
-    public calcXY (top : number, left : number) : { x : number, y : number } {
-        // const colWidth = this.calcColWidth();
+    private calcXY (top : number, left : number) : { x : number, y : number } {
         let x = Math.round((left - this.margin[0]) / (this.columnWidthInPX + this.margin[0]));
         let y = Math.round((top - this.margin[1]) / (this.rowHeight + this.margin[1]));
         x = Math.max(Math.min(x, this.cols - this.innerW), 0);
         y = Math.max(Math.min(y, this.maxRows - this.innerH), 0);
-        // console.log(`${this.maxRows} ${this.innerH} ${top} ${this.margin[1]} ${this.rowHeight} ${this.columnWidthInPX}`);
-        return {x, y};
+        return { x, y };
     }
+
+    public gridAlignedX (left : number) : number {
+        let x = Math.round((left - this.margin[0]) / (this.columnWidthInPX + this.margin[0]));
+        return Math.max(Math.min(x, this.cols - this.innerW), 0);
+    }
+
+    // public targettedY
 
     // REVIEW: How is this actually the column width?
     get columnWidthInPX () : number {
@@ -411,13 +418,12 @@ export default class GridItemComponent extends Vue {
     * @param  {Number} width  Width in pixels.
     * @return {Object} w, h as grid units.
     */
-    public calcWH (height : number, width : number) : { w : number, h : number } {
-        // const colWidth = this.calcColWidth();
+    private calcWH (height : number, width : number) : { w : number, h : number } {
         let w = Math.round((width + this.margin[0]) / (this.columnWidthInPX + this.margin[0]));
         let h = Math.round((height + this.margin[1]) / (this.rowHeight + this.margin[1]));
         w = Math.max(Math.min(w, this.cols - this.innerX), 0);
         h = Math.max(Math.min(h, this.maxRows - this.innerY), 0);
-        return {w, h};
+        return { w, h };
     }
 
     // get widthInGridUnits () : number {

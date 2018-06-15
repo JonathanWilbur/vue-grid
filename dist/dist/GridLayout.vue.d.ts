@@ -29,13 +29,11 @@ export default class GridLayoutComponent extends Vue {
         item: HTMLElement;
     };
     created(): void;
-    beforeDestroy(): void;
     mounted(): void;
     onWidthChange(): void;
     layoutUpdate(): void;
-    updateHeight(): void;
     onWindowResize(): void;
-    containerHeight(): string;
+    readonly height: number;
     dragEvent(eventName: string, id: string, x: number, y: number, h: number, w: number): void;
     resizeEvent(eventName: string, id: string, x: number, y: number, h: number, w: number): void;
 }

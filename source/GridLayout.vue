@@ -62,11 +62,11 @@ export default class GridLayoutComponent extends Vue {
         this.eventBus.$on('dragEvent', this.dragEvent);
     }
 
-    public beforeDestroy () : void {
-        this.eventBus.$off('resizeEvent', this.resizeEvent);
-        this.eventBus.$off('dragEvent', this.dragEvent);
-        window.removeEventListener("resize", this.onWindowResize);
-    }
+    // public beforeDestroy () : void {
+    //     this.eventBus.$off('resizeEvent', this.resizeEvent);
+    //     this.eventBus.$off('dragEvent', this.dragEvent);
+    //     window.removeEventListener("resize", this.onWindowResize);
+    // }
 
     public mounted () : void {
         if (this.width === Infinity) {
@@ -74,14 +74,14 @@ export default class GridLayoutComponent extends Vue {
             window.addEventListener('resize', this.onWindowResize);
         }
         compact(this.layout, this.verticalCompact);
-        this.updateHeight();
-        this.$refs.item.addEventListener("onresize", () => { this.onWindowResize(); });
+        this.mergedStyle = { height: (this.height.toString() + "px") };
+        this.$refs.item.addEventListener("onresize", this.onWindowResize);
     }
 
     @Watch("width")
     public onWidthChange () : void {
         this.eventBus.$emit("updateWidth", this.width);
-        this.updateHeight();
+        this.mergedStyle = { height: (this.height.toString() + "px") };
     }
 
     @Watch("layout")
@@ -90,13 +90,7 @@ export default class GridLayoutComponent extends Vue {
             this.lastLayoutLength = this.layout.length;
         compact(this.layout, this.verticalCompact);
         this.eventBus.$emit("updateWidth", this.width);
-        this.updateHeight();
-    }
-
-    public updateHeight () : void {
-        this.mergedStyle = {
-            height: this.containerHeight()
-        };
+        this.mergedStyle = { height: (this.height.toString() + "px") };
     }
 
     public onWindowResize () : void {
@@ -104,9 +98,9 @@ export default class GridLayoutComponent extends Vue {
             this.width = this.$refs.item.offsetWidth;
     }
 
-    public containerHeight () : string {
-        if (!this.autoSize) return "0px"; // REVIEW
-        return bottom(this.layout) * (this.rowHeight + this.margin[1]) + this.margin[1] + 'px';
+    get height () : number {
+        if (!this.autoSize) return 0; // REVIEW
+        return ((bottom(this.layout) * (this.rowHeight + this.margin[1])) + this.margin[1]);
     }
 
     public dragEvent (eventName : string, id : string, x : number, y : number, h : number, w : number) : void {
@@ -132,7 +126,7 @@ export default class GridLayoutComponent extends Vue {
         // FIXME: Fix this ignoramus' issue:
         // needed because vue can't detect changes on array element properties
         this.eventBus.$emit("compact");
-        this.updateHeight();
+        this.mergedStyle = { height: (this.height.toString() + "px") };
         if (eventName === 'dragend') this.$emit('layout-updated', this.layout);
     }
 
@@ -152,7 +146,7 @@ export default class GridLayoutComponent extends Vue {
         l.w = w;
         compact(this.layout, this.verticalCompact);
         this.eventBus.$emit("compact");
-        this.updateHeight();
+        this.mergedStyle = { height: (this.height.toString() + "px") };
         if (eventName === 'resizeend') this.$emit('layout-updated', this.layout);
     }
 

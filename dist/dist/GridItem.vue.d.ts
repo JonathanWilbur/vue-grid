@@ -74,10 +74,8 @@ export default class GridItemComponent extends Vue {
     * @param  {number} left Left position (relative to parent) in pixels.
     * @return {object} x and y in grid units.
     */
-    calcXY(top: number, left: number): {
-        x: number;
-        y: number;
-    };
+    private calcXY;
+    gridAlignedX(left: number): number;
     readonly columnWidthInPX: number;
     /**
     * Given a height and width in pixel values, calculate grid units.
@@ -85,8 +83,5 @@ export default class GridItemComponent extends Vue {
     * @param  {Number} width  Width in pixels.
     * @return {Object} w, h as grid units.
     */
-    calcWH(height: number, width: number): {
-        w: number;
-        h: number;
-    };
+    private calcWH;
 }
