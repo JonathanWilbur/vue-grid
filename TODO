@@ -1,4 +1,3 @@
-- Get rid of the eventBus
 - Fix broken layout resizing
 - Fix vertical item resizing
 - Get the placeholder to come back

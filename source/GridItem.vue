@@ -11,7 +11,7 @@
 <script lang="ts">
 import { setTopLeft, setTopRight, setTransformRtl, setTransform } from './utils';
 import { getControlPosition, createCoreData, CoreData } from './draggableUtils';
-import { Vue, Component, Prop, Inject, Watch } from "vue-property-decorator";
+import { Vue, Component, Prop, Watch } from "vue-property-decorator";
 import { Interactable, InteractEvent } from "interactjs"; // FIXME: Add DraggableOptions when v1.4.0 comes out.
 import * as interact from "interactjs/index";
 
@@ -42,8 +42,6 @@ type Position = {
 
 @Component({})
 export default class GridItemComponent extends Vue {
-
-    @Inject() eventBus! : Vue; // REVIEW
 
     @Prop() public x! : number;
     @Prop() public y! : number;
@@ -97,7 +95,7 @@ export default class GridItemComponent extends Vue {
      * set by the parent via props.
      */
     public mounted () : void {
-        this.eventBus.$on('compact', this.createStyle);
+        this.$on("compact", this.createStyle); // TODO: Get rid of explicit event-listening, if possible.
         this.margin = this.$parent.$props.margin;
         this.maxRows = this.$parent.$props.maxRows;
         this.useCssTransforms = this.$parent.$props.useCssTransforms;
@@ -143,6 +141,7 @@ export default class GridItemComponent extends Vue {
     }
 
     // TODO: Break the first part of this function into separate functions.
+    // TODO: Make this a property
     public createStyle () : void {
 
         if ((this.x + this.w) > this.cols) {

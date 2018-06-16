@@ -21,20 +21,6 @@ export declare type Layout = Array<LayoutItem>;
  */
 export declare function collides(l1: LayoutItem, l2: LayoutItem): boolean;
 /**
- * Given a layout, compact it. This involves going down each y coordinate and removing gaps
- * between items.
- *
- * @param  {Array} layout Layout.
- * @param  {Boolean} verticalCompact Whether or not to compact the layout
- *   vertically.
- * @return {Array}       Compacted Layout.
- */
-export declare function compact(layout: Layout, verticalCompact: boolean): Layout;
-/**
- * Compact an item in the layout.
- */
-export declare function compactItem(compareWith: Layout, l: LayoutItem, verticalCompact: boolean): LayoutItem;
-/**
  * Get a layout item by ID. Used so we can override later on if necessary.
  *
  * @param  {Array}  layout Layout array.
@@ -52,12 +38,6 @@ export declare function getLayoutItem(layout: Layout, id: string): LayoutItem;
  */
 export declare function getFirstCollision(layout: Layout, layoutItem: LayoutItem): LayoutItem | null;
 export declare function getAllCollisions(layout: Layout, layoutItem: LayoutItem): Array<LayoutItem>;
-/**
- * Get all static elements.
- * @param  {Array} layout Array of layout objects.
- * @return {Array}        Array of static layout items..
- */
-export declare function getStatics(layout: Layout): Array<LayoutItem>;
 /**
  * Move an element. Responsible for doing cascading movements of other elements.
  *
@@ -102,13 +82,6 @@ export declare function setTopLeft(top: number, left: number, width: number, hei
  * @returns {{top: string, right: string, width: string, height: string, position: string}}
  */
 export declare function setTopRight(top: number, right: number, width: number, height: number): Object;
-/**
- * Get layout items sorted from top left to right and down.
- *
- * @return {Array} Array of layout objects.
- * @return {Array}        Layout, sorted static items first.
- */
-export declare function sortLayoutItemsByRowCol(layout: Layout): Layout;
 export declare const IS_UNITLESS: {
     [key: string]: boolean;
 };

@@ -29,7 +29,7 @@
 
 <script lang="ts">
 import { Vue, Component, Prop, Provide } from "vue-property-decorator";
-import { getLayoutItem, compact, moveElement, LayoutItem } from "./utils";
+import { getLayoutItem, moveElement, LayoutItem, Layout } from "./utils";
 import GridItemComponent from "./GridItem.vue";
 
 @Component({
@@ -39,7 +39,6 @@ import GridItemComponent from "./GridItem.vue";
 })
 export default class GridLayoutComponent extends Vue {
 
-    @Provide("eventBus") eventBus : Vue = new Vue();
     @Prop({ default: true }) autoSize! : boolean;
     @Prop({ default: 12 }) colNum! : number;
     @Prop({ default: 0 }) rowHeight! : number;
@@ -50,7 +49,8 @@ export default class GridLayoutComponent extends Vue {
     @Prop({ default: false }) isMirrored! : boolean; // Or this.
     @Prop({ default: true }) useCssTransforms! : boolean; // Or this.
     @Prop({ default: true }) verticalCompact! : boolean; // REVIEW: What does this even do?
-    @Prop({ default: [] }) layout! : LayoutItem[];
+    @Prop({ default: [] }) layoutReference! : LayoutItem[];
+    public layout : LayoutItem[] = this.layoutReference;
     public isDragging : boolean = false;
     public isResizing : boolean = false;
     public placeholder = {
@@ -63,7 +63,7 @@ export default class GridLayoutComponent extends Vue {
 
     // TODO: Get rid of this.
     public mounted () : void {
-        compact(this.layout, this.verticalCompact);
+        this.compact();
     }
 
     get style () : object {
@@ -78,14 +78,12 @@ export default class GridLayoutComponent extends Vue {
 
     get height () : number {
         if (!this.autoSize) return 0; // REVIEW
-        // public bottom (layout : Layout) : number {
         let max : number = 0;
         let bottomY : number;
         for (let i : number = 0, len : number = this.layout.length; i < len; i++) {
             bottomY = this.layout[i].y + this.layout[i].h;
             if (bottomY > max) max = bottomY;
         }
-        // }
         return ((max * (this.rowHeight + this.margin[1])) + this.margin[1]);
     }
 
@@ -105,10 +103,7 @@ export default class GridLayoutComponent extends Vue {
         l.x = x;
         l.y = y;
         this.layout = moveElement(this.layout, l, x, y, true);
-        compact(this.layout, this.verticalCompact);
-        // FIXME: Fix this ignoramus' issue:
-        // needed because vue can't detect changes on array element properties
-        this.eventBus.$emit("compact");
+        this.compact();
     }
 
     public resizeEvent (eventName : string, id : string, x : number, y : number, h : number, w : number) : void {
@@ -124,8 +119,67 @@ export default class GridLayoutComponent extends Vue {
         let l = getLayoutItem(this.layout, id);
         l.h = h;
         l.w = w;
-        compact(this.layout, this.verticalCompact);
-        this.eventBus.$emit("compact"); // REVIEW: Is this actually necessary?
+        this.compact();
+    }
+
+    /**
+    * Given a layout, compact it. This involves going down each y coordinate and removing gaps
+    * between items.
+    */
+    private compact () : void {
+        // Statics go in the compareWith array right away so items flow around them.
+        const compareWith : LayoutItem[] = this.layout.filter((l : LayoutItem) => l.static);
+        for (let i : number = 0; i < this.layout.length; i++) {
+            if (!this.layout[i].static) {
+                // I think this does not update, because the same object reference is returned.
+                this.layout[i] = this.compactItem(compareWith, this.layout[i]);
+                compareWith.push(this.layout[i]);
+            }
+            this.layout[i].moved = false; // Clear moved flag, if it exists.
+        }
+        this.$children.forEach((child) => child.$emit("compact")); // TODO: Get the list to update in a more Vue-like way.
+    }
+
+    // NOTE: Used in only 1 place
+    private compactItem (compareWith : Layout, l : LayoutItem) : LayoutItem {
+        if (this.verticalCompact)
+            // Move the element up as far as it can go without colliding.
+            while (l.y > 0 && !this.getFirstCollision(compareWith, l)) l.y--;
+
+        // Move it down, and keep moving it down if it's colliding.
+        let collides;
+        while((collides = this.getFirstCollision(compareWith, l)))
+            l.y = collides.y + collides.h;
+
+        return l;
+    }
+
+    /**
+     * Returns the first item this layout collides with.
+     * It doesn't appear to matter which order we approach this from, although
+     * perhaps that is the wrong thing to do.
+     *
+     * @param  {Object} layoutItem Layout item.
+     * @return {Object|undefined}  A colliding layout item, or undefined.
+     */
+    private getFirstCollision (layout : Layout, layoutItem : LayoutItem) : LayoutItem | null {
+        for (let i : number = 0; i < layout.length; i++)
+            if (this.collides(layout[i], layoutItem)) return layout[i];
+        return null;
+    }
+
+    /**
+     * Given two layoutitems, check if they collide.
+     *
+     * @return {Boolean}   True if colliding.
+     */
+    private collides (l1 : LayoutItem, l2 : LayoutItem) : boolean {
+        if (l1 === l2) return false; // same element
+        if (l1.x + l1.w <= l2.x) return false; // l1 is left of l2
+        if (l1.x >= l2.x + l2.w) return false; // l1 is right of l2
+        if (l1.y + l1.h <= l2.y) return false; // l1 is above l2
+        if (l1.y >= l2.y + l2.h) return false; // l1 is below l2
+        return true; // boxes overlap
     }
 
 }

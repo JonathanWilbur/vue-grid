@@ -33,62 +33,6 @@ function collides (l1 : LayoutItem, l2 : LayoutItem) : boolean {
     return true; // boxes overlap
 }
 
-// TODO: Move into GridLayout
-// NOTE: Once you make this use Vue.$set, you will no longer need the eventBus
-//       because its only point is to cause the children to update from the
-//       new layout.
-/**
- * Given a layout, compact it. This involves going down each y coordinate and removing gaps
- * between items.
- *
- * @param  {Array} layout Layout.
- * @param  {Boolean} verticalCompact Whether or not to compact the layout
- *   vertically.
- * @return {Array}       Compacted Layout.
- */
-export
-function compact (layout : Layout, verticalCompact : boolean) : Layout {
-    // Statics go in the compareWith array right away so items flow around them.
-    const compareWith = getStatics(layout);
-    const sorted = sortLayoutItemsByRowCol(layout); // We go through the items by row and column.
-    const out = Array(layout.length); // Holding for new items.
-
-    for (let i : number = 0, len : number = sorted.length; i < len; i++) {
-        let l = sorted[i];
-
-        if (!l.static) {
-            l = compactItem(compareWith, l, verticalCompact);
-            // Add to comparison array. We only collide with items before this one.
-            // Statics are already in this array.
-            compareWith.push(l);
-        }
-
-        // Add to output array to make sure they still come out in the right order.
-        out[layout.indexOf(l)] = l;
-        l.moved = false; // Clear moved flag, if it exists.
-    }
-
-    return out;
-}
-
-/**
- * Compact an item in the layout.
- */
-export
-function compactItem (compareWith : Layout, l : LayoutItem, verticalCompact : boolean) : LayoutItem {
-
-    if (verticalCompact)
-        // Move the element up as far as it can go without colliding.
-        while (l.y > 0 && !getFirstCollision(compareWith, l)) l.y--;
-
-    // Move it down, and keep moving it down if it's colliding.
-    let collides;
-    while((collides = getFirstCollision(compareWith, l)))
-        l.y = collides.y + collides.h;
-
-    return l;
-}
-
 // FIXME: A dictionary would be better than this function.
 /**
  * Get a layout item by ID. Used so we can override later on if necessary.
@@ -127,16 +71,6 @@ function getAllCollisions (layout : Layout, layoutItem : LayoutItem) : Array<Lay
 }
 
 /**
- * Get all static elements.
- * @param  {Array} layout Array of layout objects.
- * @return {Array}        Array of static layout items..
- */
-export
-function getStatics (layout : Layout) : Array<LayoutItem> {
-    return layout.filter((l) => l.static);
-}
-
-/**
  * Move an element. Responsible for doing cascading movements of other elements.
  *
  * @param  {Array}      layout Full layout to modify.
@@ -162,7 +96,8 @@ function moveElement (layout : Layout, l : LayoutItem, x? : number, y? : number,
     // When doing this comparison, we have to sort the items we compare with
     // to ensure, in the case of multiple collisions, that we're getting the
     // nearest collision.
-    let sorted = sortLayoutItemsByRowCol(layout);
+    // let sorted = sortLayoutItemsByRowCol(layout);
+    let sorted = layout;
     if (movingUp) sorted = sorted.reverse();
     const collisions = getAllCollisions(sorted, l);
 
@@ -293,24 +228,6 @@ function setTopRight (top : number, right : number, width : number, height : num
     };
 }
 
-/**
- * Get layout items sorted from top left to right and down.
- *
- * @return {Array} Array of layout objects.
- * @return {Array}        Layout, sorted static items first.
- */
-export
-function sortLayoutItemsByRowCol (layout : Layout) : Layout {
-    let ret : Layout = [];
-    return ret.concat(layout).sort(function(a, b) {
-        if (a.y > b.y || (a.y === b.y && a.x > b.x)) {
-            return 1;
-        }
-        return -1;
-    });
-}
-
-/* The following list is defined in React's core */
 export
 const IS_UNITLESS : { [ key : string ] : boolean } = {
     animationIterationCount: true,

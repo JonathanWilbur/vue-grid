@@ -12,7 +12,6 @@ export declare type Position = {
     height?: number;
 };
 export default class GridItemComponent extends Vue {
-    eventBus: Vue;
     x: number;
     y: number;
     w: number;
