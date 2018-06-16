@@ -1,5 +1,5 @@
 <template>
-    <div ref="item"
+    <div
         class="vue-grid-item"
         :class="{ 'vue-resizable' : isResizable, 'resizing' : isResizing, 'vue-draggable-dragging' : isDragging, 'cssTransforms' : useCssTransforms, 'render-rtl' : rightToLeft, 'disable-userselect': isDragging }"
         :style="style">
@@ -43,6 +43,7 @@ type Position = {
 @Component({})
 export default class GridItemComponent extends Vue {
 
+    // These are in grid units, not pixels
     @Prop() public x! : number;
     @Prop() public y! : number;
     @Prop() public w! : number;
@@ -57,36 +58,27 @@ export default class GridItemComponent extends Vue {
     @Prop({ default: false }) public rightToLeft! : boolean;
     @Prop({ default: 30 }) public rowHeight! : number;
     @Prop({ default: 12 }) public cols! : number;
+    @Prop({ default: false }) public placeholder! : boolean;
+    @Prop({ default: [ 10, 10 ] }) public margin! : [ number, number ];
+    @Prop({ default: Infinity }) public maxRows! : number;
+    @Prop({ default: true }) public useCssTransforms! : boolean;
 
     // REVIEW: These could be better data types.
     @Prop({ default: "a, button" }) public dragIgnoreFrom! : string;
     @Prop({ default: "" }) public dragAllowFrom! : string;
     @Prop({ default: "a, button" }) public resizeIgnoreFrom! : string;
 
-    public margin : [ number, number ] = [10, 10]; // FIXME: Make it a prop
-    public maxRows : number = Infinity; // FIXME: Make it a prop
-    public useCssTransforms : boolean = true; // FIXME: Make it a prop
     public isDragging : boolean = false;
     public dragging? : Position = undefined; // FIXME: Deceptive name
     public isResizing : boolean = false;
     public resizing? : Size = undefined; // FIXME: Deceptive name
+    public style : object = {}; // TODO: Make this computed
+
+    // TODO: Make these props, and rename them to "previous"
     public lastX : number = NaN;
     public lastY : number = NaN;
     public lastW : number = NaN;
     public lastH : number = NaN;
-    public style : object = {}; // TODO: Make this computed
-    public dragEventSet : boolean = false;
-    public resizeEventSet : boolean = false;
-    public previousW : number = 0;
-    public previousH : number = 0;
-    public previousX : number = 0;
-    public previousY : number = 0;
-
-    // These are in grid units, not pixels
-    public innerX : number = this.x;
-    public innerY : number = this.y;
-    public innerW : number = this.w;
-    public innerH : number = this.h;
 
     public interactObj? : Interactable;
 
@@ -100,7 +92,7 @@ export default class GridItemComponent extends Vue {
         this.maxRows = this.$parent.$props.maxRows;
         this.useCssTransforms = this.$parent.$props.useCssTransforms;
         this.createStyle();
-        this.interactObj = interact(this.$refs.item);
+        this.interactObj = interact(this.$el);
 
         if (this.isDraggable) {
             // FIXME: Uncomment when InteractJS 1.4.0 comes out.
@@ -133,28 +125,13 @@ export default class GridItemComponent extends Vue {
         }
     }
 
-    // REVIEW: y is a property, and should not change like this.
-    @Watch('y')
-    public onYChanged (newVal : number) : void {
-        this.innerY = newVal;
-        this.createStyle();
-    }
-
     // TODO: Break the first part of this function into separate functions.
     // TODO: Make this a property
     public createStyle () : void {
 
-        if ((this.x + this.w) > this.cols) {
-            this.innerX = 0;
-            this.innerW = ((this.w > this.cols) ? this.cols : this.w);
-        } else {
-            this.innerX = this.x;
-            this.innerW = this.w;
-        }
-
         let pos = this.position();
         // { // See the TODO above this.position.
-        //     let pos2 = this.calcPosition(this.innerX, this.innerY, this.innerW, this.innerH);
+        //     let pos2 = this.calcPosition(this.x, this.y, this.w, this.h);
         //     console.assert(pos.height === pos2.height,  "height:    l:" + pos.height + " r:" + pos2.height);
         //     console.assert(pos.left === pos2.left,      "left:      l:" + pos.left + " r:" + pos2.left);
         //     console.assert(pos.right === pos2.right,    "right:     l:" + pos.right + " r:" + pos2.right);
@@ -196,24 +173,23 @@ export default class GridItemComponent extends Vue {
     // @Emit("resize") See: https://github.com/kaorun343/vue-property-decorator/issues/103
     public handleResizeStart (event : InteractEvent) : void {
         this.isResizing = true;
-        this.previousW = this.innerW;
-        this.previousH = this.innerH;
         const { x, y } = getControlPosition(event);
         let newWidth : number = this.gridAlignedWidthInPixels;
         let newHeight : number = this.gridAlignedHeightInPixels;
         this.resizing = { width: newWidth, height: newHeight };
         let newPos = this.calcWH(newHeight, newWidth);
+
+        // TODO: Move this to calcWH
         if (newPos.w < this.minW) newPos.w = this.minW;
         if (newPos.w > this.maxW) newPos.w = this.maxW;
         if (newPos.h < this.minH) newPos.h = this.minH;
         if (newPos.h > this.maxH) newPos.h = this.maxH;
         if (newPos.h < 1) newPos.h = 1;
         if (newPos.w < 1) newPos.w = 1;
+
         this.lastW = x;
         this.lastH = y;
-        if (this.innerW !== newPos.w || this.innerH !== newPos.h)
-            this.$emit("resize", this.i, newPos.h, newPos.w, newHeight, newWidth);
-        this.$emit("resizeEvent", event.type, this.i, this.innerX, this.innerY, newPos.h, newPos.w);
+        this.$emit("resizeEvent", event.type, this.i, this.x, this.y, newPos.h, newPos.w);
     }
 
     public handleResizeMove (event : InteractEvent) : void {
@@ -234,9 +210,7 @@ export default class GridItemComponent extends Vue {
         if (newPos.w < 1) newPos.w = 1;
         this.lastW = x;
         this.lastH = y;
-        if (this.innerW !== newPos.w || this.innerH !== newPos.h)
-            this.$emit("resize", this.i, newPos.h, newPos.w, newSize.height, newSize.width);
-        this.$emit("resizeEvent", event.type, this.i, this.innerX, this.innerY, newPos.h, newPos.w);
+        this.$emit("resizeEvent", event.type, this.i, this.x, this.y, newPos.h, newPos.w);
     }
 
     public handleResizeEnd (event : InteractEvent) : void {
@@ -255,11 +229,7 @@ export default class GridItemComponent extends Vue {
         if (newPos.w < 1) newPos.w = 1;
         this.lastW = x;
         this.lastH = y;
-        if (this.innerW !== newPos.w || this.innerH !== newPos.h)
-            this.$emit("resize", this.i, newPos.h, newPos.w, newSize.height, newSize.width);
-        if (this.previousW !== this.innerW || this.previousH !== this.innerH)
-            this.$emit("resized", this.i, newPos.h, newPos.w, newSize.height, newSize.width);
-        this.$emit("resizeEvent", event.type, this.i, this.innerX, this.innerY, newPos.h, newPos.w);
+        this.$emit("resizeEvent", event.type, this.i, this.x, this.y, newPos.h, newPos.w);
     }
 
     public handleDragStart (event : InteractEvent) : void {
@@ -267,8 +237,6 @@ export default class GridItemComponent extends Vue {
         this.isDragging = true;
         const {x, y} = getControlPosition(event);
         const newPosition = { top: 0, left: 0 };
-        this.previousX = this.innerX;
-        this.previousY = this.innerY;
         let parentRect : any = event.target.offsetParent.getBoundingClientRect();
         let clientRect : any = event.target.getBoundingClientRect();
         newPosition.left = (clientRect.left - parentRect.left);
@@ -278,9 +246,7 @@ export default class GridItemComponent extends Vue {
         let pos : { x : number, y : number } = this.calcXY(newPosition.top, newPosition.left);
         this.lastX = x;
         this.lastY = y;
-        if (this.innerX !== pos.x || this.innerY !== pos.y)
-            this.$emit("move", this.i, pos.x, pos.y);
-        this.$emit("dragEvent", event.type, this.i, pos.x, pos.y, this.innerH, this.innerW);
+        this.$emit("dragEvent", event.type, this.i, pos.x, pos.y, this.h, this.w);
     }
 
     public handleDragMove (event : InteractEvent) : void {
@@ -296,9 +262,7 @@ export default class GridItemComponent extends Vue {
         let pos : { x : number, y : number } = this.calcXY(newPosition.top, newPosition.left);
         this.lastX = x;
         this.lastY = y;
-        if (this.innerX !== pos.x || this.innerY !== pos.y)
-            this.$emit("move", this.i, pos.x, pos.y);
-        this.$emit("dragEvent", event.type, this.i, pos.x, pos.y, this.innerH, this.innerW);
+        this.$emit("dragEvent", event.type, this.i, pos.x, pos.y, this.h, this.w);
     }
 
     /* NOTE:
@@ -321,11 +285,7 @@ export default class GridItemComponent extends Vue {
         let pos : { x : number, y : number } = this.calcXY(newPosition.top, newPosition.left);
         this.lastX = x;
         this.lastY = y;
-        if (this.innerX !== pos.x || this.innerY !== pos.y)
-            this.$emit("move", this.i, pos.x, pos.y);
-        if (this.previousX !== this.innerX || this.previousY !== this.innerY)
-            this.$emit("moved", this.i, pos.x, pos.y);
-        this.$emit("dragEvent", event.type, this.i, pos.x, pos.y, this.innerH, this.innerW);
+        this.$emit("dragEvent", event.type, this.i, pos.x, pos.y, this.h, this.w);
     }
 
     /* TODO:
@@ -351,43 +311,43 @@ export default class GridItemComponent extends Vue {
         // TODO: Use one return statement, if possible
         if (this.rightToLeft) {
             return {
-                right: Math.round(colWidth * this.innerX + (this.innerX + 1) * this.margin[0]),
-                top: Math.round(this.rowHeight * this.innerY + (this.innerY + 1) * this.margin[1]),
-                width: this.innerW === Infinity ? this.innerW : Math.round(colWidth * this.innerW + Math.max(0, this.innerW - 1) * this.margin[0]),
-                height: this.innerH === Infinity ? this.innerH : Math.round(this.rowHeight * this.innerH + Math.max(0, this.innerH - 1) * this.margin[1])
+                right: Math.round(colWidth * this.x + (this.x + 1) * this.margin[0]),
+                top: Math.round(this.rowHeight * this.y + (this.y + 1) * this.margin[1]),
+                width: this.w === Infinity ? this.w : Math.round(colWidth * this.w + Math.max(0, this.w - 1) * this.margin[0]),
+                height: this.h === Infinity ? this.h : Math.round(this.rowHeight * this.h + Math.max(0, this.h - 1) * this.margin[1])
             };
         } else {
             return {
-                left: Math.round(colWidth * this.innerX + (this.innerX + 1) * this.margin[0]),
-                top: Math.round(this.rowHeight * this.innerY + (this.innerY + 1) * this.margin[1]),
-                width: this.innerW === Infinity ? this.innerW : Math.round(colWidth * this.innerW + Math.max(0, this.innerW - 1) * this.margin[0]),
-                height: this.innerH === Infinity ? this.innerH : Math.round(this.rowHeight * this.innerH + Math.max(0, this.innerH - 1) * this.margin[1])
+                left: Math.round(colWidth * this.x + (this.x + 1) * this.margin[0]),
+                top: Math.round(this.rowHeight * this.y + (this.y + 1) * this.margin[1]),
+                width: this.w === Infinity ? this.w : Math.round(colWidth * this.w + Math.max(0, this.w - 1) * this.margin[0]),
+                height: this.h === Infinity ? this.h : Math.round(this.rowHeight * this.h + Math.max(0, this.h - 1) * this.margin[1])
             };
         }
     }
 
     get gridAlignedRightPositionInPixels () : number {
-        return Math.round(this.columnWidthInPX * this.innerX + (this.innerX + 1) * this.margin[0]);
+        return Math.round(this.columnWidthInPX * this.x + (this.x + 1) * this.margin[0]);
     }
 
     get gridAlignedLeftPositionInPixels () : number {
-        return Math.round(this.columnWidthInPX * this.innerX + (this.innerX + 1) * this.margin[0]);
+        return Math.round(this.columnWidthInPX * this.x + (this.x + 1) * this.margin[0]);
     }
 
     get gridAlignedTopPositionInPixels () : number {
-        return Math.round(this.rowHeight * this.innerY + (this.innerY + 1) * this.margin[1]);
+        return Math.round(this.rowHeight * this.y + (this.y + 1) * this.margin[1]);
     }
 
     get gridAlignedWidthInPixels () : number {
-        return (this.innerW === Infinity ? this.innerW : Math.round(this.columnWidthInPX * this.innerW + Math.max(0, this.innerW - 1) * this.margin[0]));
+        return (this.w === Infinity ? this.w : Math.round(this.columnWidthInPX * this.w + Math.max(0, this.w - 1) * this.margin[0]));
     }
 
     get gridAlignedHeightInPixels () : number {
-        return (this.innerH === Infinity ? this.innerH : Math.round(this.rowHeight * this.innerH + Math.max(0, this.innerH - 1) * this.margin[1]));
+        return (this.h === Infinity ? this.h : Math.round(this.rowHeight * this.h + Math.max(0, this.h - 1) * this.margin[1]));
     }
 
     /**
-    * Translate this.innerX and y coordinates from pixels to grid units.
+    * Translate this.x and y coordinates from pixels to grid units.
     * @param  {number} top  Top position (relative to parent) in pixels.
     * @param  {number} left Left position (relative to parent) in pixels.
     * @return {object} x and y in grid units.
@@ -395,17 +355,15 @@ export default class GridItemComponent extends Vue {
     private calcXY (top : number, left : number) : { x : number, y : number } {
         let x = Math.round((left - this.margin[0]) / (this.columnWidthInPX + this.margin[0]));
         let y = Math.round((top - this.margin[1]) / (this.rowHeight + this.margin[1]));
-        x = Math.max(Math.min(x, this.cols - this.innerW), 0);
-        y = Math.max(Math.min(y, this.maxRows - this.innerH), 0);
+        x = Math.max(Math.min(x, this.cols - this.w), 0);
+        y = Math.max(Math.min(y, this.maxRows - this.h), 0);
         return { x, y };
     }
 
     public gridAlignedX (left : number) : number {
         let x = Math.round((left - this.margin[0]) / (this.columnWidthInPX + this.margin[0]));
-        return Math.max(Math.min(x, this.cols - this.innerW), 0);
+        return Math.max(Math.min(x, this.cols - this.w), 0);
     }
-
-    // public targettedY
 
     // REVIEW: How is this actually the column width?
     get columnWidthInPX () : number {
@@ -421,14 +379,14 @@ export default class GridItemComponent extends Vue {
     private calcWH (height : number, width : number) : { w : number, h : number } {
         let w = Math.round((width + this.margin[0]) / (this.columnWidthInPX + this.margin[0]));
         let h = Math.round((height + this.margin[1]) / (this.rowHeight + this.margin[1]));
-        w = Math.max(Math.min(w, this.cols - this.innerX), 0);
-        h = Math.max(Math.min(h, this.maxRows - this.innerY), 0);
+        w = Math.max(Math.min(w, this.cols - this.x), 0);
+        h = Math.max(Math.min(h, this.maxRows - this.y), 0);
         return { w, h };
     }
 
     // get widthInGridUnits () : number {
     //     let w = Math.round((width + this.margin[0]) / (this.columnWidthInPX + this.margin[0]));
-    //     return Math.max(Math.min(w, this.cols - this.innerX), 0);
+    //     return Math.max(Math.min(w, this.cols - this.x), 0);
     // }
 }
 </script>
@@ -459,18 +417,6 @@ export default class GridItemComponent extends Vue {
     .vue-grid-item.vue-draggable-dragging {
         transition:none;
         z-index: 3;
-    }
-
-    .vue-grid-item.vue-grid-placeholder {
-        background: red;
-        opacity: 0.2;
-        transition-duration: 100ms;
-        z-index: 2;
-        -webkit-user-select: none;
-        -moz-user-select: none;
-        -ms-user-select: none;
-        -o-user-select: none;
-        user-select: none;
     }
 
     .vue-grid-item > .vue-resizable-handle.rtl {

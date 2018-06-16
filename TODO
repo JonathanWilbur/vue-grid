@@ -1,10 +1,13 @@
-- Fix broken layout resizing
-- Fix vertical item resizing
-- Get the placeholder to come back
-- Remove spiderweb of callback recursion
-- Make methods private where possible
-- Remove the grid
-- Give the variables more sensible names
-- Review the classes applied to each template
-- Fix Right-to-Left
-- Optional Vertical Compact
+- High Priority
+  - Fix incorrect initial rendering
+  - Fix broken layout resizing
+  - Fix broken vertical ordering (you used to be able to put 5 under 7, for instance.)
+
+- Medium Priority
+  - Fix Right-to-Left
+  - Optional Vertical Compact
+
+- Low Priority
+  - Give the variables more sensible names
+  - Make methods private where possible
+  - Review the classes applied to each template

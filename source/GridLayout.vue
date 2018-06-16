@@ -22,14 +22,21 @@
             :y="placeholder.y"
             :w="placeholder.w"
             :h="placeholder.h"
-            :i="placeholder.i">
+            :i="placeholder.i"
+            :use-css-transforms="useCssTransforms"
+            :margin="margin"
+            :max-rows="maxRows"
+            :placeholder="true"
+            v-on:dragEvent="dragEvent"
+            v-on:resizeEvent="resizeEvent">
+            <!-- REVIEW THIS ^ -->
         </grid-item>
     </div>
 </template>
 
 <script lang="ts">
-import { Vue, Component, Prop, Provide } from "vue-property-decorator";
-import { getLayoutItem, moveElement, LayoutItem, Layout } from "./utils";
+import { Vue, Component, Prop } from "vue-property-decorator";
+import { getLayoutItem, LayoutItem, Layout } from "./utils";
 import GridItemComponent from "./GridItem.vue";
 
 @Component({
@@ -89,36 +96,34 @@ export default class GridLayoutComponent extends Vue {
 
     public dragEvent (eventName : string, id : string, x : number, y : number, h : number, w : number) : void {
         if (eventName === "dragmove" || eventName === "dragstart") {
-            this.placeholder.i = id;
-            this.placeholder.x = x;
-            this.placeholder.y = y;
-            this.placeholder.w = w;
-            this.placeholder.h = h;
+            this.placeholder = { i: id, x: x, y: y, w: w, h: h };
             this.isDragging = true;
         } else
             this.isDragging = false;
 
         // TODO: Change layout to be a dictionary
         let l : LayoutItem = getLayoutItem(this.layout, id);
-        l.x = x;
-        l.y = y;
-        this.layout = moveElement(this.layout, l, x, y, true);
+        // l.x = x;
+        // l.y = y;
+        Vue.set(l, "x", x);
+        Vue.set(l, "y", y);
+        // this.layout = moveElement(this.layout, l, x, y, true);
+        // Vue.set(this, "layout", moveElement(this.layout, l, x, y, true))
+        this.moveElement(l, x, y, true);
         this.compact();
     }
 
     public resizeEvent (eventName : string, id : string, x : number, y : number, h : number, w : number) : void {
         if (eventName === "resizestart" || eventName === "resizemove") {
-            this.placeholder.i = id;
-            this.placeholder.x = x;
-            this.placeholder.y = y;
-            this.placeholder.w = w;
-            this.placeholder.h = h;
+            this.placeholder = { i: id, x: x, y: y, w: w, h: h };
             this.isResizing = true;
         } else
             this.isResizing = false;
         let l = getLayoutItem(this.layout, id);
-        l.h = h;
-        l.w = w;
+        // l.h = h;
+        // l.w = w;
+        Vue.set(l, "h", h);
+        Vue.set(l, "w", w);
         this.compact();
     }
 
@@ -170,7 +175,6 @@ export default class GridLayoutComponent extends Vue {
 
     /**
      * Given two layoutitems, check if they collide.
-     *
      * @return {Boolean}   True if colliding.
      */
     private collides (l1 : LayoutItem, l2 : LayoutItem) : boolean {
@@ -182,6 +186,91 @@ export default class GridLayoutComponent extends Vue {
         return true; // boxes overlap
     }
 
+    /**
+     * Move an element. Responsible for doing cascading movements of other elements.
+     *
+     * @param  {Array}      layout Full layout to modify.
+     * @param  {LayoutItem} l      element to move.
+     * @param  {number}     [x]    X position in grid units.
+     * @param  {number}     [y]    Y position in grid units.
+     * @param  {boolean}    [isUserAction] If true, designates that the item we're moving is
+     *                                     being dragged/resized by th euser.
+     */
+    private moveElement (l : LayoutItem, x? : number, y? : number, isUserAction? : boolean) : void {
+        if (l.static) return;
+        if (l.y === y && l.x === x) return;
+
+        const movingUp = (y && (l.y > y)); // REVIEW: Do you need the first condition?
+
+        // This is quite a bit faster than extending the object
+        if (typeof l.x === 'undefined') l.x = x || 0; // REVIEW
+        if (typeof l.y === 'undefined') l.y = y || 0; // REVIEW
+        l.moved = true;
+
+        // If this collides with anything, move it.
+        // When doing this comparison, we have to sort the items we compare with
+        // to ensure, in the case of multiple collisions, that we're getting the
+        // nearest collision.
+        // let sorted = sortLayoutItemsByRowCol(layout);
+        let sorted = this.layout;
+        if (movingUp) sorted = sorted.reverse();
+        const collisions = this.getAllCollisions(sorted, l);
+
+        // Move each item that collides away from this element.
+        for (let i = 0, len = collisions.length; i < len; i++) {
+            const collision = collisions[i];
+            if (collision.moved) continue; // So we can't infinite loop
+            // This makes it feel a bit more precise by waiting to swap for just a bit when moving up.
+            if (l.y > collision.y && l.y - collision.y > collision.h / 4) continue;
+            // Don't move static items - we have to move *this* element away
+            if (collision.static) {
+                this.moveElementAwayFromCollision(collision, l, isUserAction);
+            } else {
+                this.moveElementAwayFromCollision(l, collision, isUserAction);
+            }
+        }
+    }
+
+    private getAllCollisions (layout : Layout, layoutItem : LayoutItem) : Array<LayoutItem> {
+        return layout.filter((l) => this.collides(l, layoutItem));
+    }
+
+    /**
+     * This is where the magic needs to happen - given a collision, move an element away from the collision.
+     * We attempt to move it up if there's room, otherwise it goes below.
+     *
+     * @param  {Array} layout            Full layout to modify.
+     * @param  {LayoutItem} collidesWith Layout item we're colliding with.
+     * @param  {LayoutItem} itemToMove   Layout item we're moving.
+     * @param  {Boolean} [isUserAction]  If true, designates that the item we're moving is being dragged/resized
+     *                                   by the user.
+     */
+    private moveElementAwayFromCollision (collidesWith : LayoutItem, itemToMove : LayoutItem, isUserAction? : boolean) : void {
+
+        // If there is enough space above the collision to put this element, move it there.
+        // We only do this on the main collision as this can get funky in cascades and cause
+        // unwanted swapping behavior.
+        if (isUserAction) {
+            // Make a mock item so we don't modify the item here, only modify in moveElement.
+            const fakeItem: LayoutItem = {
+                x: itemToMove.x,
+                y: itemToMove.y,
+                w: itemToMove.w,
+                h: itemToMove.h,
+                i: '-1'
+            };
+
+            fakeItem.y = Math.max(collidesWith.y - itemToMove.h, 0);
+
+            if (!this.getFirstCollision(this.layout, fakeItem))
+                this.moveElement(itemToMove, undefined, fakeItem.y);
+        }
+
+        // Previously this was optimized to move below the collision directly, but this can cause problems
+        // with cascading moves, as an item may actually leapflog a collision and cause a reversal in order.
+        this.moveElement(itemToMove, undefined, itemToMove.y + 1);
+    }
+
 }
 </script>
 
@@ -189,5 +278,16 @@ export default class GridLayoutComponent extends Vue {
     .vue-grid-layout {
         position: relative;
         transition: height 200ms ease;
+    }
+    .vue-grid-placeholder {
+        background: red;
+        opacity: 0.2;
+        transition-duration: 100ms;
+        z-index: 200;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        -o-user-select: none;
+        user-select: none;
     }
 </style>

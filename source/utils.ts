@@ -18,21 +18,6 @@ interface LayoutItem {
 export
 type Layout = Array<LayoutItem>;
 
-/**
- * Given two layoutitems, check if they collide.
- *
- * @return {Boolean}   True if colliding.
- */
-export
-function collides (l1 : LayoutItem, l2 : LayoutItem) : boolean {
-    if (l1 === l2) return false; // same element
-    if (l1.x + l1.w <= l2.x) return false; // l1 is left of l2
-    if (l1.x >= l2.x + l2.w) return false; // l1 is right of l2
-    if (l1.y + l1.h <= l2.y) return false; // l1 is above l2
-    if (l1.y >= l2.y + l2.h) return false; // l1 is below l2
-    return true; // boxes overlap
-}
-
 // FIXME: A dictionary would be better than this function.
 /**
  * Get a layout item by ID. Used so we can override later on if necessary.
@@ -47,111 +32,6 @@ function getLayoutItem (layout : Layout, id : string) : LayoutItem {
         if (layout[i].i === id) return layout[i];
     }
     return { w: 0, h: 0, x: 0, y: 0, i: "" };
-}
-
-/**
- * Returns the first item this layout collides with.
- * It doesn't appear to matter which order we approach this from, although
- * perhaps that is the wrong thing to do.
- *
- * @param  {Object} layoutItem Layout item.
- * @return {Object|undefined}  A colliding layout item, or undefined.
- */
-export
-function getFirstCollision (layout : Layout, layoutItem : LayoutItem): LayoutItem | null {
-    for (let i : number = 0, len : number = layout.length; i < len; i++) {
-        if (collides(layout[i], layoutItem)) return layout[i];
-    }
-    return null;
-}
-
-export
-function getAllCollisions (layout : Layout, layoutItem : LayoutItem) : Array<LayoutItem> {
-    return layout.filter((l) => collides(l, layoutItem));
-}
-
-/**
- * Move an element. Responsible for doing cascading movements of other elements.
- *
- * @param  {Array}      layout Full layout to modify.
- * @param  {LayoutItem} l      element to move.
- * @param  {number}     [x]    X position in grid units.
- * @param  {number}     [y]    Y position in grid units.
- * @param  {boolean}    [isUserAction] If true, designates that the item we're moving is
- *                                     being dragged/resized by th euser.
- */
-export
-function moveElement (layout : Layout, l : LayoutItem, x? : number, y? : number, isUserAction? : boolean) : Layout {
-    if (l.static) return layout;
-    if (l.y === y && l.x === x) return layout;
-
-    const movingUp = (y && (l.y > y)); // REVIEW: Do you need the first condition?
-
-    // This is quite a bit faster than extending the object
-    if (typeof l.x === 'undefined') l.x = x || 0; // REVIEW
-    if (typeof l.y === 'undefined') l.y = y || 0; // REVIEW
-    l.moved = true;
-
-    // If this collides with anything, move it.
-    // When doing this comparison, we have to sort the items we compare with
-    // to ensure, in the case of multiple collisions, that we're getting the
-    // nearest collision.
-    // let sorted = sortLayoutItemsByRowCol(layout);
-    let sorted = layout;
-    if (movingUp) sorted = sorted.reverse();
-    const collisions = getAllCollisions(sorted, l);
-
-    // Move each item that collides away from this element.
-    for (let i = 0, len = collisions.length; i < len; i++) {
-        const collision = collisions[i];
-        if (collision.moved) continue; // So we can't infinite loop
-        // This makes it feel a bit more precise by waiting to swap for just a bit when moving up.
-        if (l.y > collision.y && l.y - collision.y > collision.h / 4) continue;
-        // Don't move static items - we have to move *this* element away
-        if (collision.static) {
-            layout = moveElementAwayFromCollision(layout, collision, l, isUserAction);
-        } else {
-            layout = moveElementAwayFromCollision(layout, l, collision, isUserAction);
-        }
-    }
-    return layout;
-}
-
-/**
- * This is where the magic needs to happen - given a collision, move an element away from the collision.
- * We attempt to move it up if there's room, otherwise it goes below.
- *
- * @param  {Array} layout            Full layout to modify.
- * @param  {LayoutItem} collidesWith Layout item we're colliding with.
- * @param  {LayoutItem} itemToMove   Layout item we're moving.
- * @param  {Boolean} [isUserAction]  If true, designates that the item we're moving is being dragged/resized
- *                                   by the user.
- */
-export
-function moveElementAwayFromCollision (layout : Layout, collidesWith : LayoutItem, itemToMove : LayoutItem, isUserAction? : boolean) : Layout {
-
-    // If there is enough space above the collision to put this element, move it there.
-    // We only do this on the main collision as this can get funky in cascades and cause
-    // unwanted swapping behavior.
-    if (isUserAction) {
-        // Make a mock item so we don't modify the item here, only modify in moveElement.
-        const fakeItem: LayoutItem = {
-            x: itemToMove.x,
-            y: itemToMove.y,
-            w: itemToMove.w,
-            h: itemToMove.h,
-            i: '-1'
-        };
-
-        fakeItem.y = Math.max(collidesWith.y - itemToMove.h, 0);
-
-        if (!getFirstCollision(layout, fakeItem))
-            return moveElement(layout, itemToMove, undefined, fakeItem.y);
-    }
-
-    // Previously this was optimized to move below the collision directly, but this can cause problems
-    // with cascading moves, as an item may actually leapflog a collision and cause a reversal in order.
-    return moveElement(layout, itemToMove, undefined, itemToMove.y + 1);
 }
 
 // REVIEW: Use more strictly-typed return value.

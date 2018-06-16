@@ -45,8 +45,30 @@ export default class GridLayoutComponent extends Vue {
     private getFirstCollision;
     /**
      * Given two layoutitems, check if they collide.
-     *
      * @return {Boolean}   True if colliding.
      */
     private collides;
+    /**
+     * Move an element. Responsible for doing cascading movements of other elements.
+     *
+     * @param  {Array}      layout Full layout to modify.
+     * @param  {LayoutItem} l      element to move.
+     * @param  {number}     [x]    X position in grid units.
+     * @param  {number}     [y]    Y position in grid units.
+     * @param  {boolean}    [isUserAction] If true, designates that the item we're moving is
+     *                                     being dragged/resized by th euser.
+     */
+    private moveElement;
+    private getAllCollisions;
+    /**
+     * This is where the magic needs to happen - given a collision, move an element away from the collision.
+     * We attempt to move it up if there's room, otherwise it goes below.
+     *
+     * @param  {Array} layout            Full layout to modify.
+     * @param  {LayoutItem} collidesWith Layout item we're colliding with.
+     * @param  {LayoutItem} itemToMove   Layout item we're moving.
+     * @param  {Boolean} [isUserAction]  If true, designates that the item we're moving is being dragged/resized
+     *                                   by the user.
+     */
+    private moveElementAwayFromCollision;
 }
