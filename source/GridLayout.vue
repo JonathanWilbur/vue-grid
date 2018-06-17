@@ -116,12 +116,8 @@ export default class GridLayoutComponent extends Vue {
 
         // TODO: Change layout to be a dictionary
         let l : LayoutItem = getLayoutItem(this.layout, id);
-        // l.x = x;
-        // l.y = y;
-        Vue.set(l, "x", x);
-        Vue.set(l, "y", y);
-        // this.layout = moveElement(this.layout, l, x, y, true);
-        // Vue.set(this, "layout", moveElement(this.layout, l, x, y, true))
+        l.x = x;
+        l.y = y;
         this.moveElement(l, x, y, true);
         this.compact();
     }
@@ -133,10 +129,8 @@ export default class GridLayoutComponent extends Vue {
         } else
             this.isResizing = false;
         let l = getLayoutItem(this.layout, id);
-        // l.h = h;
-        // l.w = w;
-        Vue.set(l, "h", h);
-        Vue.set(l, "w", w);
+        l.h = h;
+        l.w = w;
         this.compact();
     }
 
@@ -291,7 +285,6 @@ export default class GridLayoutComponent extends Vue {
     .vue-grid-layout {
         position: relative;
         transition: height 200ms ease;
-        width: 100%;
     }
     .vue-grid-placeholder {
         background: red;
