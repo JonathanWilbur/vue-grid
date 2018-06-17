@@ -1,13 +1,17 @@
 - High Priority
-  - Fix incorrect initial rendering
   - Fix broken layout resizing
   - Fix broken vertical ordering (you used to be able to put 5 under 7, for instance.)
 
 - Medium Priority
   - Fix Right-to-Left
   - Optional Vertical Compact
+  - Use direct DOM manipulation rather than style updates, if possible
 
 - Low Priority
   - Give the variables more sensible names
   - Make methods private where possible
   - Review the classes applied to each template
+  - Document units
+
+- Ideas
+  - Use flexbox to arrange tiles?

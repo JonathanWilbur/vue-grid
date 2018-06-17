@@ -1,5 +1,5 @@
 <template>
-    <div class="vue-grid-layout" :style="style">
+    <div class="vue-grid-layout" :style="style" ref="grid">
         <grid-item v-for="item in layout"
             :cols="12"
             :x="item.x"
@@ -10,6 +10,13 @@
             :key="item.i"
             :is-draggable="true"
             :is-resizable="true"
+            :use-css-transforms="useCssTransforms"
+            :horizontal-margin="horizontalMargin"
+            :vertical-margin="verticalMargin"
+            :max-rows="maxRows"
+            :placeholder="true"
+            :row-height="rowHeight"
+            :column-width="columnWidth"
             :right-to-left="false"
             v-on:dragEvent="dragEvent"
             v-on:resizeEvent="resizeEvent">
@@ -23,13 +30,18 @@
             :w="placeholder.w"
             :h="placeholder.h"
             :i="placeholder.i"
+            :is-draggable="true"
+            :is-resizable="true"
             :use-css-transforms="useCssTransforms"
-            :margin="margin"
+            :horizontal-margin="horizontalMargin"
+            :vertical-margin="verticalMargin"
             :max-rows="maxRows"
             :placeholder="true"
+            :row-height="rowHeight"
+            :column-width="columnWidth"
+            :right-to-left="false"
             v-on:dragEvent="dragEvent"
             v-on:resizeEvent="resizeEvent">
-            <!-- REVIEW THIS ^ -->
         </grid-item>
     </div>
 </template>
@@ -46,17 +58,19 @@ import GridItemComponent from "./GridItem.vue";
 })
 export default class GridLayoutComponent extends Vue {
 
-    @Prop({ default: true }) autoSize! : boolean;
-    @Prop({ default: 12 }) colNum! : number;
-    @Prop({ default: 0 }) rowHeight! : number;
-    @Prop({ default: Infinity }) maxRows! : number;
-    @Prop({ default: [ 10, 10 ]}) margin! : [number, number];
-    @Prop({ default: true }) isDraggable! : boolean; // This is literally not even used.
-    @Prop({ default: false }) isResizable! : boolean; // Neither is this.
-    @Prop({ default: false }) isMirrored! : boolean; // Or this.
-    @Prop({ default: true }) useCssTransforms! : boolean; // Or this.
-    @Prop({ default: true }) verticalCompact! : boolean; // REVIEW: What does this even do?
-    @Prop({ default: [] }) layoutReference! : LayoutItem[];
+    @Prop({ default: true })        public autoSize! : boolean;
+    @Prop({ default: 12 })          public colNum! : number;
+    @Prop({ default: 0 })           public rowHeight! : number;
+    @Prop({ default: 1024 })        public width! : number;
+    @Prop({ default: Infinity })    public maxRows! : number;
+    @Prop({ default: 10 })          public horizontalMargin! : number;
+    @Prop({ default: 10 })          public verticalMargin! : number;
+    @Prop({ default: true })        public isDraggable! : boolean; // This is literally not even used.
+    @Prop({ default: false })       public isResizable! : boolean; // Neither is this.
+    @Prop({ default: false })       public isMirrored! : boolean; // Or this.
+    @Prop({ default: true })        public useCssTransforms! : boolean; // Or this.
+    @Prop({ default: true })        public verticalCompact! : boolean; // REVIEW: What does this even do?
+    @Prop({ default: [] })          public layoutReference! : LayoutItem[];
     public layout : LayoutItem[] = this.layoutReference;
     public isDragging : boolean = false;
     public isResizing : boolean = false;
@@ -68,7 +82,6 @@ export default class GridLayoutComponent extends Vue {
         i: ""
     };
 
-    // TODO: Get rid of this.
     public mounted () : void {
         this.compact();
     }
@@ -79,10 +92,6 @@ export default class GridLayoutComponent extends Vue {
         };
     }
 
-    get width () : number {
-        return this.$el.offsetWidth;
-    }
-
     get height () : number {
         if (!this.autoSize) return 0; // REVIEW
         let max : number = 0;
@@ -91,7 +100,11 @@ export default class GridLayoutComponent extends Vue {
             bottomY = this.layout[i].y + this.layout[i].h;
             if (bottomY > max) max = bottomY;
         }
-        return ((max * (this.rowHeight + this.margin[1])) + this.margin[1]);
+        return ((max * (this.rowHeight + this.verticalMargin)) + this.verticalMargin);
+    }
+
+    get columnWidth () : number {
+        return ((this.width - ((this.colNum + 1) * this.horizontalMargin)) / this.colNum);
     }
 
     public dragEvent (eventName : string, id : string, x : number, y : number, h : number, w : number) : void {
@@ -278,6 +291,7 @@ export default class GridLayoutComponent extends Vue {
     .vue-grid-layout {
         position: relative;
         transition: height 200ms ease;
+        width: 100%;
     }
     .vue-grid-placeholder {
         background: red;

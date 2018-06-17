@@ -25,11 +25,13 @@ export default class GridItemComponent extends Vue {
     isResizable: boolean;
     rightToLeft: boolean;
     rowHeight: number;
+    columnWidth: number;
     cols: number;
     placeholder: boolean;
-    margin: [number, number];
     maxRows: number;
     useCssTransforms: boolean;
+    horizontalMargin: number;
+    verticalMargin: number;
     dragIgnoreFrom: string;
     dragAllowFrom: string;
     resizeIgnoreFrom: string;
@@ -37,14 +39,13 @@ export default class GridItemComponent extends Vue {
     dragging?: Position;
     isResizing: boolean;
     resizing?: Size;
-    style: object;
     lastX: number;
     lastY: number;
     lastW: number;
     lastH: number;
     interactObj?: Interactable;
     mounted(): void;
-    createStyle(): void;
+    readonly style: object;
     handleResizeStart(event: InteractEvent): void;
     handleResizeMove(event: InteractEvent): void;
     handleResizeEnd(event: InteractEvent): void;
@@ -64,8 +65,6 @@ export default class GridItemComponent extends Vue {
     * @return {object} x and y in grid units.
     */
     private calcXY;
-    gridAlignedX(left: number): number;
-    readonly columnWidthInPX: number;
     /**
     * Given a height and width in pixel values, calculate grid units.
     * @param  {Number} height Height in pixels.

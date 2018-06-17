@@ -4,8 +4,10 @@ export default class GridLayoutComponent extends Vue {
     autoSize: boolean;
     colNum: number;
     rowHeight: number;
+    width: number;
     maxRows: number;
-    margin: [number, number];
+    horizontalMargin: number;
+    verticalMargin: number;
     isDraggable: boolean;
     isResizable: boolean;
     isMirrored: boolean;
@@ -24,8 +26,8 @@ export default class GridLayoutComponent extends Vue {
     };
     mounted(): void;
     readonly style: object;
-    readonly width: number;
     readonly height: number;
+    readonly columnWidth: number;
     dragEvent(eventName: string, id: string, x: number, y: number, h: number, w: number): void;
     resizeEvent(eventName: string, id: string, x: number, y: number, h: number, w: number): void;
     /**
