@@ -2,7 +2,8 @@
     <div
         class="vue-grid-item"
         :class="{ 'vue-resizable' : isResizable, 'resizing' : isResizing, 'vue-draggable-dragging' : isDragging, 'cssTransforms' : useCssTransforms, 'render-rtl' : rightToLeft, 'disable-userselect': isDragging }"
-        :style="style">
+        :style="style"
+        :draggable="isDragging">
         <slot></slot>
         <span v-if="isResizable" ref="handle" class="vue-resizable-handle"></span>
     </div>
@@ -72,10 +73,6 @@ export default class GridItemComponent extends Vue {
 
     public interactObj? : Interactable;
 
-    /* REVIEW:
-     * This really reeks of very bad code. All of these properties should be
-     * set by the parent via props.
-     */
     public mounted () : void {
         this.interactObj = interact(this.$el);
 
@@ -111,7 +108,7 @@ export default class GridItemComponent extends Vue {
     }
 
     get style () : object {
-        let pos = this.position();
+        // let pos = this.position();
         // { // See the TODO above this.position.
         //     let pos2 = this.calcPosition(this.x, this.y, this.w, this.h);
         //     console.assert(pos.height === pos2.height,  "height:    l:" + pos.height + " r:" + pos2.height);
@@ -121,33 +118,50 @@ export default class GridItemComponent extends Vue {
         //     console.assert(pos.width === pos2.width,    "width:     l:" + pos.width + " r:" + pos2.width);
         // }
 
-        if (this.isDragging && this.dragging) {
-            pos.top = this.dragging.top;
-            if (this.rightToLeft) {
-                pos.right = this.dragging.left;
-            } else {
-                pos.left = this.dragging.left;
-            }
+        if (this.isDragging) {
+            return {
+                position: "fixed",
+                zIndex: 200,
+                top: 0,
+                left: 0
+            };
         }
 
-        if (this.isResizing && this.resizing) {
-            pos.width = this.resizing.width;
-            pos.height = this.resizing.height;
-        }
+        // if (this.isDragging && this.dragging) {
+        //     pos.top = this.dragging.top;
+        //     if (this.rightToLeft) {
+        //         pos.right = this.dragging.left;
+        //     } else {
+        //         pos.left = this.dragging.left;
+        //     }
+        // }
 
-        if (this.useCssTransforms) {
-            if (this.rightToLeft) {
-                return setTransformRtl(pos.top, (pos.right || 0), (pos.width || 0), (pos.height || 0));
-            } else {
-                return setTransform(pos.top, (pos.left || 0), (pos.width || 0), (pos.height || 0));
-            }
-        } else {
-            if (this.rightToLeft) {
-                return setTopRight(pos.top, (pos.right || 0), (pos.width || 0), (pos.height || 0));
-            } else {
-                return setTopLeft(pos.top, (pos.left || 0), (pos.width || 0), (pos.height || 0));
-            }
-        }
+        // if (this.isResizing && this.resizing) {
+        //     pos.width = this.resizing.width;
+        //     pos.height = this.resizing.height;
+        // }
+
+        // if (this.useCssTransforms) {
+        //     if (this.rightToLeft) {
+        //         return setTransformRtl(pos.top, (pos.right || 0), (pos.width || 0), (pos.height || 0));
+        //     } else {
+        //         return setTransform(pos.top, (pos.left || 0), (pos.width || 0), (pos.height || 0));
+        //     }
+        // } else {
+        //     if (this.rightToLeft) {
+        //         return setTopRight(pos.top, (pos.right || 0), (pos.width || 0), (pos.height || 0));
+        //     } else {
+        //         return setTopLeft(pos.top, (pos.left || 0), (pos.width || 0), (pos.height || 0));
+        //     }
+        // }
+
+        return {
+            gridColumnStart: (this.x + 1),
+            gridColumnEnd: (this.x + this.w + 1),
+            gridRowStart: (this.y + 1),
+            gridRowEnd: (this.y + this.h + 1)
+            // transform: "translate(" + 0 + "px, " + 0 + "px, 0)"
+        };
     }
 
     // @Emit("resize") See: https://github.com/kaorun343/vue-property-decorator/issues/103
@@ -222,10 +236,11 @@ export default class GridItemComponent extends Vue {
         if (this.rightToLeft) newPosition.left *= -1;
         newPosition.top = (clientRect.top - parentRect.top);
         this.dragging = newPosition;
-        let pos : { x : number, y : number } = this.calcXY(newPosition.top, newPosition.left);
+        // let pos : { x : number, y : number } = this.calcXY(newPosition.top, newPosition.left);
         this.lastX = x;
         this.lastY = y;
-        this.$emit("dragEvent", event.type, this.i, pos.x, pos.y, this.h, this.w);
+        // this.$emit("dragEvent", event.type, this.i, pos.x, pos.y, this.h, this.w);
+        this.$emit("dragEvent", event.type, this.i, x, y, this.h, this.w);
     }
 
     public handleDragMove (event : InteractEvent) : void {
@@ -238,10 +253,11 @@ export default class GridItemComponent extends Vue {
         else newPosition.left = ((this.dragging.left || 0) + coreEvent.deltaX);
         newPosition.top = this.dragging.top + coreEvent.deltaY;
         this.dragging = newPosition;
-        let pos : { x : number, y : number } = this.calcXY(newPosition.top, newPosition.left);
+        // let pos : { x : number, y : number } = this.calcXY(newPosition.top, newPosition.left);
         this.lastX = x;
         this.lastY = y;
-        this.$emit("dragEvent", event.type, this.i, pos.x, pos.y, this.h, this.w);
+        // this.$emit("dragEvent", event.type, this.i, pos.x, pos.y, this.h, this.w);
+        this.$emit("dragEvent", event.type, this.i, x, y, this.h, this.w);
     }
 
     /* NOTE:
@@ -359,18 +375,16 @@ export default class GridItemComponent extends Vue {
     .vue-grid-item {
         transition: all 200ms ease;
         transition-property: left, top, right;
+        align-self: stretch;
+        transition: 0.2s;
         /* add right for rtl */
+        /*width: width + "px",
+        height: height + "px",
+        position: 'absolute'*/
     }
 
     .vue-grid-item.cssTransforms {
         transition-property: transform;
-        left: 0;
-        right: auto;
-    }
-
-    .vue-grid-item.cssTransforms.render-rtl {
-        left: auto;
-        right: 0;
     }
 
     .vue-grid-item.resizing {
@@ -383,7 +397,7 @@ export default class GridItemComponent extends Vue {
         z-index: 3;
     }
 
-    .vue-grid-item > .vue-resizable-handle.rtl {
+    /*.vue-grid-item > .vue-resizable-handle.rtl {
         position: absolute;
         width: 20px;
         height: 20px;
@@ -396,9 +410,9 @@ export default class GridItemComponent extends Vue {
         background-origin: content-box;
         box-sizing: border-box;
         cursor: se-resize;
-    }
+    }*/
 
-    .vue-grid-item > .vue-resizable-handle.rtl {
+    /*.vue-grid-item > .vue-resizable-handle.rtl {
         bottom: 0;
         left: 0;
         background: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAuMDAwMDAwMDAwMDAwMDAyIiBoZWlnaHQ9IjEwLjAwMDAwMDAwMDAwMDAwMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KIDwhLS0gQ3JlYXRlZCB3aXRoIE1ldGhvZCBEcmF3IC0gaHR0cDovL2dpdGh1Yi5jb20vZHVvcGl4ZWwvTWV0aG9kLURyYXcvIC0tPgogPGc+CiAgPHRpdGxlPmJhY2tncm91bmQ8L3RpdGxlPgogIDxyZWN0IGZpbGw9Im5vbmUiIGlkPSJjYW52YXNfYmFja2dyb3VuZCIgaGVpZ2h0PSIxMiIgd2lkdGg9IjEyIiB5PSItMSIgeD0iLTEiLz4KICA8ZyBkaXNwbGF5PSJub25lIiBvdmVyZmxvdz0idmlzaWJsZSIgeT0iMCIgeD0iMCIgaGVpZ2h0PSIxMDAlIiB3aWR0aD0iMTAwJSIgaWQ9ImNhbnZhc0dyaWQiPgogICA8cmVjdCBmaWxsPSJ1cmwoI2dyaWRwYXR0ZXJuKSIgc3Ryb2tlLXdpZHRoPSIwIiB5PSIwIiB4PSIwIiBoZWlnaHQ9IjEwMCUiIHdpZHRoPSIxMDAlIi8+CiAgPC9nPgogPC9nPgogPGc+CiAgPHRpdGxlPkxheWVyIDE8L3RpdGxlPgogIDxsaW5lIGNhbnZhcz0iI2ZmZmZmZiIgY2FudmFzLW9wYWNpdHk9IjEiIHN0cm9rZS1saW5lY2FwPSJ1bmRlZmluZWQiIHN0cm9rZS1saW5lam9pbj0idW5kZWZpbmVkIiBpZD0ic3ZnXzEiIHkyPSItNzAuMTc4NDA3IiB4Mj0iMTI0LjQ2NDE3NSIgeTE9Ii0zOC4zOTI3MzciIHgxPSIxNDQuODIxMjg5IiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlPSIjMDAwIiBmaWxsPSJub25lIi8+CiAgPGxpbmUgc3Ryb2tlPSIjNjY2NjY2IiBzdHJva2UtbGluZWNhcD0idW5kZWZpbmVkIiBzdHJva2UtbGluZWpvaW49InVuZGVmaW5lZCIgaWQ9InN2Z181IiB5Mj0iOS4xMDY5NTciIHgyPSIwLjk0NzI0NyIgeTE9Ii0wLjAxODEyOCIgeDE9IjAuOTQ3MjQ3IiBzdHJva2Utd2lkdGg9IjIiIGZpbGw9Im5vbmUiLz4KICA8bGluZSBzdHJva2UtbGluZWNhcD0idW5kZWZpbmVkIiBzdHJva2UtbGluZWpvaW49InVuZGVmaW5lZCIgaWQ9InN2Z183IiB5Mj0iOSIgeDI9IjEwLjA3MzUyOSIgeTE9IjkiIHgxPSItMC42NTU2NCIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2U9IiM2NjY2NjYiIGZpbGw9Im5vbmUiLz4KIDwvZz4KPC9zdmc+);
@@ -408,7 +422,7 @@ export default class GridItemComponent extends Vue {
         background-origin: content-box;
         cursor: sw-resize;
         right: auto;
-    }
+    }*/
 
     .vue-grid-item.disable-userselect {
         user-select: none;

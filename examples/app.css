@@ -23,13 +23,11 @@
     overflow-y: scroll;
 }
 
-.columns {
+/* .columns {
     -moz-columns: 120px;
     -webkit-columns: 120px;
     columns: 120px;
-}
-
-
+} */
 
 .vue-resizable-handle {
     z-index: 5000;
@@ -60,7 +58,7 @@
     background: #cce;
 }
 
-.vue-grid-item .text {
+/* .vue-grid-item .text {
     font-size: 24px;
     text-align: center;
     position: absolute;
@@ -71,7 +69,7 @@
     margin: auto;
     height: 100%;
     width: 100%;
-}
+} */
 
 .vue-grid-item .no-drag {
     height: 100%;

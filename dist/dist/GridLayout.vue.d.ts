@@ -24,7 +24,6 @@ export default class GridLayoutComponent extends Vue {
         h: number;
         i: string;
     };
-    mounted(): void;
     readonly style: object;
     readonly height: number;
     readonly columnWidth: number;

@@ -20,10 +20,10 @@
             :right-to-left="false"
             v-on:dragEvent="dragEvent"
             v-on:resizeEvent="resizeEvent">
-            <span class="text">{{item.i}}</span>
-            <slot></slot>
+                <div>{{item.i}}</div>
+                <slot></slot>
         </grid-item>
-        <grid-item class="vue-grid-placeholder"
+        <!-- grid-item class="vue-grid-placeholder"
             v-show="isDragging || isResizing"
             :x="placeholder.x"
             :y="placeholder.y"
@@ -42,7 +42,7 @@
             :right-to-left="false"
             v-on:dragEvent="dragEvent"
             v-on:resizeEvent="resizeEvent">
-        </grid-item>
+        </grid-item -->
     </div>
 </template>
 
@@ -82,13 +82,18 @@ export default class GridLayoutComponent extends Vue {
         i: ""
     };
 
-    public mounted () : void {
-        this.compact();
-    }
+    // public mounted () : void {
+    //     this.compact();
+    // }
 
     get style () : object {
         return {
-            height: (this.height.toString() + "px")
+            // height: (this.height.toString() + "px")
+            display: "grid",
+            gridTemplateColumns: `repeat(${this.colNum}, 1fr)`,
+            gridColumnGap: `${this.horizontalMargin}px`,
+            gridRowGap: `${this.verticalMargin}px`,
+            gridAutoRows: `${this.rowHeight}px`
         };
     }
 
@@ -149,7 +154,7 @@ export default class GridLayoutComponent extends Vue {
             }
             this.layout[i].moved = false; // Clear moved flag, if it exists.
         }
-        this.$children.forEach((child) => child.$emit("compact")); // TODO: Get the list to update in a more Vue-like way.
+        // this.$children.forEach((child) => child.$emit("compact")); // TODO: Get the list to update in a more Vue-like way.
     }
 
     // NOTE: Used in only 1 place
@@ -285,12 +290,14 @@ export default class GridLayoutComponent extends Vue {
     .vue-grid-layout {
         position: relative;
         transition: height 200ms ease;
+        display: grid;
+        justify-items: stretch;
     }
     .vue-grid-placeholder {
         background: red;
         opacity: 0.2;
         transition-duration: 100ms;
-        z-index: 200;
+        z-index: 2;
         -webkit-user-select: none;
         -moz-user-select: none;
         -ms-user-select: none;
